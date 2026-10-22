@@ -1,0 +1,1 @@
+Build assets with pnpm --dir web run build.

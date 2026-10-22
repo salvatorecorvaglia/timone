@@ -1,0 +1,276 @@
+name: Container and Helm distribution
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Published stable release tag
+        type: string
+        required: true
+  workflow_call:
+    inputs:
+      version:
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: distribution-${{ inputs.version }}
+  cancel-in-progress: false
+
+jobs:
+  image:
+    name: Test and publish image (${{ matrix.arch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write
+    env:
+      RELEASE_TAG: ${{ inputs.version }}
+      ARCH: ${{ matrix.arch }}
+      IMAGE: ghcr.io/salvatorecorvaglia/timone
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.version }}
+          persist-credentials: false
+      # Keep binaries/chart tied to the release; test fixes follow the workflow
+      # revision so a manual distribution retry does not require moving a tag.
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          path: .distribution-tools
+          sparse-checkout: tests/helm
+          persist-credentials: false
+      - name: Validate stable release and download verified binary
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]
+          # Reject draft/prerelease assets, including manual retries.
+          gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
+            --json isDraft,isPrerelease --jq 'if .isDraft or .isPrerelease then error("Expected a published stable release") else empty end'
+          python3 scripts/version.py --check
+          VERSION=${RELEASE_TAG#v}
+          test "$(python3 -c 'import json; print(json.load(open("web/package.json"))["version"])')" = "$VERSION"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "TIMONE_ACCEPTANCE_KUBECONFIG=$RUNNER_TEMP/timone-kubeconfig" >> "$GITHUB_ENV"
+          archive="timone_${VERSION}_linux_${ARCH}.tar.gz"
+          gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --dir release \
+            --pattern "$archive" --pattern checksums.txt
+          (cd release && sha256sum --check --ignore-missing checksums.txt)
+          mkdir -p "release-binaries/$ARCH"
+          tar -xzf "release/$archive" -C "release-binaries/$ARCH" timone
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - name: Build native runtime image
+        run: |
+          docker build -f Dockerfile.release --build-arg TARGETARCH="$ARCH" \
+            --build-arg VERSION="$VERSION" --build-arg REVISION="$(git rev-parse HEAD)" \
+            -t "$IMAGE:$VERSION-$ARCH" .
+          test "$(docker run --rm "$IMAGE:$VERSION-$ARCH" --version)" = "Timone $VERSION"
+      - name: Test container API, assets, authentication and graceful shutdown
+        run: |
+          go run ./tests/smoke -image "$IMAGE:$VERSION-$ARCH"
+          go run ./tests/lifecycle -image "$IMAGE:$VERSION-$ARCH" -platform "linux/$ARCH"
+      - uses: azure/setup-helm@v5
+        if: matrix.arch == 'amd64'
+        with:
+          version: v4.3.0
+      - name: Create disposable Kubernetes cluster
+        if: matrix.arch == 'amd64'
+        run: |
+          go install sigs.k8s.io/kind@v0.33.0
+          kind create cluster --name timone-acceptance --kubeconfig "$TIMONE_ACCEPTANCE_KUBECONFIG" \
+            --image kindest/node:v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5 --wait 180s
+          kind load docker-image "$IMAGE:$VERSION-$ARCH" --name timone-acceptance
+      - name: Test Helm deployment, upgrade, rollback and RBAC
+        if: matrix.arch == 'amd64'
+        env:
+          TIMONE_TEST_IMAGE: ghcr.io/salvatorecorvaglia/timone:${{ env.VERSION }}-${{ matrix.arch }}
+        run: |
+          sh .distribution-tools/tests/helm/install.sh
+          sh .distribution-tools/tests/helm/cluster.sh
+      - name: Delete disposable cluster
+        if: ${{ always() && matrix.arch == 'amd64' }}
+        run: |
+          if command -v kind >/dev/null; then kind delete cluster --name timone-acceptance; fi
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - name: Push tested image and record immutable reference
+        run: |
+          docker push "$IMAGE:$VERSION-$ARCH"
+          mkdir image-digests
+          docker inspect --format '{{index .RepoDigests 0}}' "$IMAGE:$VERSION-$ARCH" > "image-digests/$ARCH"
+      - uses: actions/upload-artifact@v6
+        with:
+          name: image-${{ matrix.arch }}
+          path: image-digests/*
+          if-no-files-found: error
+
+  chart:
+    name: Publish multi-platform image and pinned Helm chart
+    needs: image
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      packages: write
+    env:
+      RELEASE_TAG: ${{ inputs.version }}
+      IMAGE: ghcr.io/salvatorecorvaglia/timone
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.version }}
+          persist-credentials: false
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: image-*
+          merge-multiple: true
+          path: image-digests
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - uses: azure/setup-helm@v5
+        with:
+          version: v4.3.0
+      - name: Publish versioned multi-platform index
+        run: |
+          VERSION=${RELEASE_TAG#v}
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          if ! docker buildx imagetools inspect "$IMAGE:$VERSION" > image-info.txt 2>/dev/null; then
+            docker buildx imagetools create --tag "$IMAGE:$VERSION" \
+              "$(cat image-digests/amd64)" "$(cat image-digests/arm64)"
+            docker buildx imagetools inspect "$IMAGE:$VERSION" > image-info.txt
+          fi
+          digest=$(awk '$1 == "Digest:" { print $2; exit }' image-info.txt)
+          printf '%s\n' "$digest" | grep -Eq '^sha256:[0-9a-f]{64}$'
+          echo "IMAGE_DIGEST=$digest" >> "$GITHUB_ENV"
+          latest=$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName --jq .tagName)
+          if [ "$latest" = "$RELEASE_TAG" ]; then
+            docker buildx imagetools create --tag "$IMAGE:latest" "$IMAGE@$digest"
+          fi
+      - name: Package chart with immutable image digest
+        run: |
+          mkdir -p chart-release
+          if gh release view "$RELEASE_TAG" --json assets --jq '.assets[].name' | grep -Fx "timone-$VERSION.tgz"; then
+            gh release download "$RELEASE_TAG" --dir chart-release \
+              --pattern "timone-$VERSION.tgz" --pattern "timone-$VERSION.tgz.sha256"
+            (cd chart-release && sha256sum --check "timone-$VERSION.tgz.sha256")
+          else
+            cp -R deploy/helm/timone packaged-chart
+            python3 - <<'PYTHON'
+          import os
+          from pathlib import Path
+          values = Path('packaged-chart/values.yaml')
+          text = values.read_text()
+          assert text.count('  digest: ""') == 1
+          values.write_text(text.replace('  digest: ""', '  digest: "' + os.environ['IMAGE_DIGEST'] + '"'))
+          PYTHON
+            helm lint packaged-chart --strict --set auth.existingSecret=release-check
+            helm package packaged-chart --destination chart-release --version "$VERSION" --app-version "$VERSION"
+            (cd chart-release && sha256sum "timone-$VERSION.tgz" > "timone-$VERSION.tgz.sha256")
+            gh release upload "$RELEASE_TAG" "chart-release/timone-$VERSION.tgz" "chart-release/timone-$VERSION.tgz.sha256"
+          fi
+      - uses: actions/upload-artifact@v6
+        with:
+          name: chart-release
+          path: chart-release/*
+          if-no-files-found: error
+
+  pages:
+    name: Publish public Helm repository
+    needs: chart
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    concurrency:
+      group: helm-pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    env:
+      RELEASE_TAG: ${{ inputs.version }}
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: chart-release
+          path: helm-repository
+      - uses: azure/setup-helm@v5
+        with:
+          version: v4.3.0
+      - name: Merge published chart into repository index
+        run: |
+          status=$(curl -sSL --retry 3 -o previous-index.yaml -w '%{http_code}' https://salvatorecorvaglia.github.io/timone/index.yaml)
+          case "$status" in
+            200) helm repo index helm-repository --url "https://github.com/salvatorecorvaglia/timone/releases/download/$RELEASE_TAG" --merge previous-index.yaml ;;
+            404) helm repo index helm-repository --url "https://github.com/salvatorecorvaglia/timone/releases/download/$RELEASE_TAG" ;;
+            *) echo "Could not fetch existing Helm index (HTTP $status)" >&2; exit 1 ;;
+          esac
+          touch helm-repository/.nojekyll
+      - uses: actions/configure-pages@v6
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: helm-repository
+      - uses: actions/deploy-pages@v5
+        id: deploy
+
+  verify:
+    name: Verify anonymous image and Helm downloads
+    needs: [chart, pages]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      RELEASE_TAG: ${{ inputs.version }}
+    steps:
+      - uses: docker/setup-buildx-action@v4
+      - uses: azure/setup-helm@v5
+        with:
+          version: v4.3.0
+      - name: Verify public access without registry credentials
+        run: |
+          export DOCKER_CONFIG="$RUNNER_TEMP/anonymous-docker"
+          mkdir -p "$DOCKER_CONFIG"
+          version=${RELEASE_TAG#v}
+          image=ghcr.io/salvatorecorvaglia/timone
+          if ! docker pull "$image:$version"; then
+            echo '::error::Set package timone visibility to Public in https://github.com/users/salvatorecorvaglia/packages/container/timone/settings then rerun this failed job.'
+            exit 1
+          fi
+          test "$(docker run --rm "$image:$version" --version)" = "Timone $version"
+          docker buildx imagetools inspect "$image:$version" --raw > manifest.json
+          python3 - <<'PYTHON'
+          import json
+          platforms = {entry['platform']['os'] + '/' + entry['platform']['architecture'] for entry in json.load(open('manifest.json'))['manifests']}
+          assert platforms == {'linux/amd64', 'linux/arm64'}, platforms
+          PYTHON
+          helm repo add timone https://salvatorecorvaglia.github.io/timone
+          helm repo update timone
+          helm pull timone/timone --version "$version" --destination "$RUNNER_TEMP"
+          helm template timone "$RUNNER_TEMP/timone-$version.tgz" --set auth.existingSecret=public-check > rendered.yaml
+          grep -Eq 'image: "ghcr.io/salvatorecorvaglia/timone@sha256:[0-9a-f]{64}"' rendered.yaml

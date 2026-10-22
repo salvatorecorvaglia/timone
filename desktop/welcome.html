@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'; frame-src 'none'" />
+    <title>Timone — Connect</title>
+    <link rel="stylesheet" href="welcome.css" />
+    <script src="welcome.js" defer></script>
+  </head>
+  <body>
+    <main>
+      <div class="brand"><img src="assets/icon.svg" alt="" width="44" height="44" /> Timone <span>DESKTOP</span></div>
+      <p class="eyebrow">YOUR KUBERNETES WORKSPACE</p>
+      <h1>Your cluster,<br />in focus.</h1>
+      <p class="description">Explore resources, understand connections, and investigate issues. Read-only access, with data kept on your computer.</p>
+      <form id="connection">
+        <label>Kubeconfig</label>
+        <div class="file-row"><span id="kubeconfig">Use KUBECONFIG or ~/.kube/config</span><button id="choose" type="button">Choose file…</button></div>
+        <label for="context">Context <small>optional</small></label>
+        <input id="context" placeholder="Use the current kubeconfig context" maxlength="1024" autocomplete="off" />
+        <label class="consent"><input id="exec" type="checkbox" /><span>Allow trusted credential plugins<small>Kubeconfig exec plugins run programs on your computer, such as aws, gcloud, or kubelogin. Enable only for a kubeconfig you trust.</small></span></label>
+        <p id="error" role="alert" hidden></p>
+        <button class="primary" id="connect" type="submit">Open cluster <span>↗</span></button>
+        <button id="demo" hidden type="button">Explore the demo</button>
+        <p id="status" role="status" aria-live="polite"></p>
+      </form>
+      <footer>No telemetry · No persistent cluster database</footer>
+    </main>
+  </body>
+</html>

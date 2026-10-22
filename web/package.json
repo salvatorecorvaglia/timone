@@ -1,0 +1,54 @@
+{
+  "name": "timone-web",
+  "version": "1.0.0",
+  "description": "Your control panel for Kubernetes insights and diagnostics",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc -b tsconfig.build.json && vite build",
+    "typecheck": "pnpm run test:fixtures && tsc --noEmit",
+    "lint": "biome lint .",
+    "format": "biome format --write .",
+    "format:check": "biome format .",
+    "test:fixtures": "go run ../tests/fixtures > src/test-fixtures.json.tmp && mv src/test-fixtures.json.tmp src/test-fixtures.json",
+    "test": "pnpm run test:fixtures && vitest run",
+    "test:browser": "node ../tests/browser/run.mjs",
+    "test:coverage": "pnpm run test --coverage"
+  },
+  "dependencies": {
+    "@radix-ui/react-dialog": "^1.3.1",
+    "@tanstack/react-query": "^5.104.5",
+    "@xyflow/react": "^12.12.0",
+    "lucide-react": "^1.61.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "react-is": "19.3.1",
+    "react-router-dom": "7.18.4",
+    "recharts": "^3.10.1",
+    "yaml": "^2.9.1"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.6.2",
+    "@playwright/test": "1.64.1",
+    "@tailwindcss/vite": "^4.3.3",
+    "@testing-library/dom": "10.4.2",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
+    "@types/node": "26.6.5",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@typescript/native": "npm:typescript@^7.0.2",
+    "@vitejs/plugin-react": "^6.1.2",
+    "@vitest/coverage-v8": "^5.0.5",
+    "axe-core": "^4.14.0",
+    "jsdom": "^30.1.3",
+    "tailwindcss": "^4.3.3",
+    "vite": "^8.3.5",
+    "vitest": "^5.0.5"
+  },
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "packageManager": "pnpm@11.23.0"
+}

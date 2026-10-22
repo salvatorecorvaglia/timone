@@ -1,0 +1,91 @@
+:root[data-theme="light"] {
+  --graph-background: #f1f4f3;
+  --graph-edge: #5d7166;
+  --graph-label: #1d2d26;
+  --graph-label-background: #fff;
+  --graph-grid: #dce3df;
+  --graph-mask: #edf1efb0;
+  --graph-allowed: #425992;
+  --graph-unknown: #5d7166;
+  --bg: #f5f7f7;
+  --sidebar: #edf1ef;
+  --panel: #fff;
+  --raised: #f1f4f3;
+  --border: #dce3df;
+  --text: #1d2d26;
+  --muted: #5d7166;
+  --subtle: #53655c;
+  --accent: #11613f;
+  --healthy: #126440;
+  --warning: #88500b;
+  --critical: #a42d40;
+  --blue: #425992;
+  background: var(--bg);
+  color: var(--text);
+  color-scheme: light;
+}
+:root[data-theme="light"] .nav-group a.active {
+  background: #dcece2;
+}
+:root[data-theme="light"] .mode-banner.demo {
+  background: #f7efdf;
+  color: #866932;
+  border-color: #e6d7b7;
+}
+:root[data-theme="light"] .mode-banner span {
+  color: #70532c;
+}
+:root[data-theme="light"] .button.primary,
+:root[data-theme="light"] .skip-link {
+  color: #fff;
+}
+:root[data-theme="light"] .attention-banner {
+  background: #fcf4e9;
+  border-color: #e9d4b8;
+}
+:root[data-theme="light"] .attention-banner strong {
+  color: #87571e;
+}
+:root[data-theme="light"] .attention-banner p {
+  color: #70532c;
+}
+:root[data-theme="light"] .attention-icon {
+  background: #f3e5d0;
+  border-color: #e8cdab;
+}
+:root[data-theme="light"] td {
+  color: #52665b;
+}
+:root[data-theme="light"] .stat-card {
+  border-color: #d5dfd8;
+}
+:root[data-theme="light"] .theme-options > button.selected {
+  background: #e8f1eb;
+}
+:root[data-theme="light"] .data-warning {
+  background: #fff7ea;
+  border-color: #e3d0af;
+}
+:root[data-theme="light"] .code-block {
+  background: #edf3f0;
+  color: #285641;
+}
+:root[data-theme="light"] .manifest-notice {
+  background: #e8f0f5;
+  color: #46677a;
+}
+:root[data-theme="light"] .check-chips span {
+  background: #edf7f0;
+  color: #167952;
+  border-color: #cce3d6;
+}
+:root[data-theme="light"] .contextbar strong {
+  color: #40584b;
+}
+:root[data-theme="light"] .workspace-label {
+  color: #43574b;
+}
+:root[data-theme="light"] .issue-resource strong,
+:root[data-theme="light"] .investigation-section h3 {
+  color: #536a5d;
+}

@@ -1,0 +1,25 @@
+services:
+  timone:
+    build: .
+    image: timone:local
+    ports:
+      - "127.0.0.1:${TIMONE_PORT:-8080}:8080"
+    environment:
+      TIMONE_ENV: development
+      TIMONE_MODE: demo
+      TIMONE_LISTEN: 0.0.0.0:8080
+      TIMONE_DIAGNOSTICS_STARTUP_GRACE_SECONDS: ${TIMONE_DIAGNOSTICS_STARTUP_GRACE_SECONDS:-300}
+      TIMONE_DIAGNOSTICS_WARNING_EVENT_WINDOW_SECONDS: ${TIMONE_DIAGNOSTICS_WARNING_EVENT_WINDOW_SECONDS:-900}
+      TIMONE_DIAGNOSTICS_RESTART_THRESHOLD: ${TIMONE_DIAGNOSTICS_RESTART_THRESHOLD:-5}
+      TIMONE_TOKEN: ${TIMONE_TOKEN:?Set TIMONE_TOKEN to at least 32 random characters}
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    restart: unless-stopped
+    stop_grace_period: 15s
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/healthz"]
+      interval: 5s
+      timeout: 2s
+      retries: 5
+      start_period: 5s

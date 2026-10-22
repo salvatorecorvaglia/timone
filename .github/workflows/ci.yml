@@ -1,0 +1,195 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+jobs:
+  workflows:
+    name: Workflow validation
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - name: Check application version metadata
+        run: |
+          python3 scripts/version.py --check
+          python3 -m unittest discover -s tests/version -v
+      - name: Validate GitHub Actions workflows
+        run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12 -shellcheck= -pyflakes=
+
+  packaging:
+    name: Packaging (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-15]
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Check shell syntax
+        run: sh -n tests/helm/install.sh
+      - name: Test Homebrew formula generation and publication
+        run: python3 -m unittest discover -s tests/homebrew -v
+      - name: Test desktop manifest generation
+        run: python3 -m unittest discover -s tests/channels -v
+
+  frontend:
+    name: Frontend checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CI: true
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v5
+        with:
+          package_json_file: web/package.json
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+      - name: Install dependencies
+        run: pnpm --dir web install --frozen-lockfile
+
+      - name: Check frontend
+        run: |
+          pnpm --dir web run typecheck
+          pnpm --dir web run lint
+          pnpm --dir web run format:check
+          pnpm --dir web run test:coverage
+
+      - name: Upload frontend coverage
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v6
+        with:
+          name: frontend-coverage
+          path: web/coverage/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  integration:
+    name: Go and browser tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      CI: true
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v5
+        with:
+          package_json_file: web/package.json
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: |
+          go mod download
+          go mod verify
+          pnpm --dir web install --frozen-lockfile
+
+      - name: Check Go formatting
+        run: |
+          unformatted=$(gofmt -l cmd internal tests web/embed.go)
+          if [ -n "$unformatted" ]; then
+            printf 'Run gofmt on these files:\n%s\n' "$unformatted"
+            exit 1
+          fi
+
+      - name: Build frontend
+        run: pnpm --dir web run build
+
+      - name: Test Go packages
+        run: go test -race -count=1 -timeout=10m -coverprofile=coverage.out ./...
+
+      - name: Exercise concurrent investigation scale
+        env:
+          TIMONE_LOAD_TEST: '1'
+        run: go test -race -count=1 -timeout=3m -run TestConcurrentInvestigationLoad -v ./internal/service
+
+      - name: Vet Go packages
+        run: go vet ./...
+
+      - uses: azure/setup-helm@v5
+        with:
+          version: v4.3.0
+
+      - name: Validate Helm chart and deployment contracts
+        run: |
+          helm lint deploy/helm/timone --strict --set auth.existingSecret=ci-check
+          go run ./tests/helm
+
+      - name: Build application
+        run: CGO_ENABLED=0 go build -trimpath -o bin/timone ./cmd/timone
+
+      - name: Smoke test application
+        run: go run ./tests/smoke -binary ./bin/timone
+
+      - name: Install Chromium
+        run: pnpm --dir web exec playwright install --with-deps chromium
+
+      - name: Run browser and accessibility tests
+        run: pnpm --dir web run test:browser
+
+      - name: Upload coverage and browser reports
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v6
+        with:
+          name: test-reports
+          path: |
+            coverage.out
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  checks:
+    name: Build and test
+    if: ${{ always() }}
+    needs: [workflows, frontend, integration, packaging]
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Verify all checks passed
+        env:
+          WORKFLOWS_RESULT: ${{ needs.workflows.result }}
+          FRONTEND_RESULT: ${{ needs.frontend.result }}
+          INTEGRATION_RESULT: ${{ needs.integration.result }}
+          PACKAGING_RESULT: ${{ needs.packaging.result }}
+        run: test "$WORKFLOWS_RESULT" = success && test "$FRONTEND_RESULT" = success && test "$INTEGRATION_RESULT" = success && test "$PACKAGING_RESULT" = success

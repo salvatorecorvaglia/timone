@@ -1,0 +1,91 @@
+replicaCount: 1
+image:
+  repository: ghcr.io/salvatorecorvaglia/timone
+  # Defaults to Chart.appVersion. Set to override the application image tag.
+  tag: ""
+  # Takes precedence over tag. Published chart packages pin the verified image.
+  digest: ""
+  pullPolicy: IfNotPresent
+auth:
+  # Pre-create a Secret with a 'token' key containing >=32 random characters.
+  existingSecret: ""
+  mode: token
+  # Direct peer CIDRs of your authenticated gateway; forwarded addresses are ignored.
+  trustedProxies: []
+  # Token-login rate limits: trust X-Forwarded-For only from these direct proxy peers.
+  loginTrustedProxies: []
+accessLog: true
+# Serialized sanitized cache + informer retention; not a process RSS limit.
+retainedMiB: 16
+diagnostics:
+  # Whole seconds; startup zero evaluates age-gated signals immediately.
+  startupGraceSeconds: 300
+  warningEventWindowSeconds: 900
+  # Cumulative count across Pod containers, not a rate.
+  restartThreshold: 5
+scope:
+  # Empty reads namespaced resources cluster-wide using a ClusterRole.
+  namespace: ""
+rbac:
+  # Upgrade compatibility only; legacy names collide for same-name releases across namespaces.
+  legacyNames: false
+  # Optional metadata-only authorizer queries for other ServiceAccounts.
+  subjectAccessReviews: false
+  # Only API metadata URLs; this grants no additional resource reads.
+  discovery: true
+  # Disable cluster-scoped visibility to omit Node / Namespace / CRD / global RBAC reads.
+  clusterResources: true
+  # Secret payloads are redacted; granting list still makes them readable by the process.
+  secrets: false
+  podLogs: false
+  metrics: true
+helmDetails:
+  # Explicit opt-in; Secret list permission (rbac.secrets) is also required.
+  enabled: false
+# Explicit custom APIs only; each entry also grants get/list on its instances
+# and get on its named CRD. No wildcard API grants are created.
+customResources: []
+# - group: platform.example.org
+#   resource: databases
+#   namespaced: true
+prometheus:
+  # Explicit opt-in; this endpoint must contain data for this cluster only,
+  # or use the exact cluster label below. No discovered endpoint is queried.
+  url: ""
+  cluster: ""
+  allowHTTP: false
+  # Existing Secret with a 'token' key. HTTPS is mandatory with credentials.
+  authSecret: ""
+  # Optional existing ConfigMap with a 'ca.crt' key, loaded at process startup.
+  caConfigMap: ""
+gitops:
+  argoURL: ""
+  fluxRenderedURL: ""
+  # Bind an Argo destination server URL or registered name to this workspace.
+  destination: ""
+  # Existing Secret keys argo-token / flux-token. Never placed in environment values.
+  authSecret: ""
+  caConfigMap: ""
+service:
+  port: 8080
+publicURL: ""
+ingress:
+  enabled: false
+  className: ""
+  host: ""
+  tls: []
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: "1"
+    memory: 512Mi
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+networkPolicy:
+  enabled: false
+  # When enabled, an empty peer list denies ingress; supply trusted gateway peers.
+  ingressPeers: []

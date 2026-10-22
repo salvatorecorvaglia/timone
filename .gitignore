@@ -1,0 +1,82 @@
+# Build output and release archives
+/bin/
+/dist/
+/desktop/dist/
+/desktop/resources/
+/desktop/assets/icon.png
+/desktop/assets/icon.ico
+/desktop/test-results/
+
+# Go test binaries and coverage profiles
+*.test
+*.out
+/coverage/
+/coverage.xml
+/go.work
+/go.work.sum
+
+# Web dependencies and build output (keep web/dist/.gitkeep for //go:embed)
+node_modules/
+.pnpm-store/
+/web/dist/*
+!/web/dist/.gitkeep
+*.tsbuildinfo
+.vite/
+
+# Web test and coverage output
+/web/coverage/
+/web/src/test-fixtures.json
+/web/src/test-fixtures.json.tmp
+/test-results/
+/playwright-report/
+
+# Local environment and credentials
+.env
+.env.*
+!.env.example
+!.env.*.example
+.aws/
+.kube/
+kubeconfig
+kubeconfig.*
+*.kubeconfig
+
+# Python caches from validation scripts
+__pycache__/
+*.py[cod]
+.venv/
+
+# Logs
+*.log
+
+# Editors and OS files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# AI Tools & Agents
+.openai/
+.chatgpt/
+gpt-config.json
+openai.config.json
+.anthropic/
+.claude/
+claude.config.json
+claude-settings.json
+.prompts/
+.prompt-cache/
+.ai/
+.gemini/
+.antigravity/
+.antigravitycli/
+.copilot/
+.codex/
+.cagent/
+.cursor/
+.windsurf/
+.cline/
+CLAUDE.md

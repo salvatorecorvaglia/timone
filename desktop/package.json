@@ -1,0 +1,29 @@
+{
+  "name": "timone-desktop",
+  "version": "1.0.0",
+  "description": "Timone desktop — read-only Kubernetes insights and diagnostics",
+  "private": true,
+  "main": "main.cjs",
+  "author": "Salvatore Corvaglia",
+  "license": "MIT",
+  "homepage": "https://github.com/salvatorecorvaglia/timone",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test test/*.test.cjs",
+    "test:app": "node test/app.mjs",
+    "test:cluster": "node test/cluster.mjs",
+    "icons": "node scripts/icons.cjs",
+    "pack": "electron-builder --config builder.cjs --dir --publish never",
+    "dist": "electron-builder --config builder.cjs --publish never"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.1",
+    "@resvg/resvg-js": "2.6.2",
+    "electron": "45.0.0",
+    "electron-builder": "26.15.3"
+  },
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "packageManager": "pnpm@11.23.0"
+}
