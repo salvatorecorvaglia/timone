@@ -76,26 +76,6 @@ docker compose down
 
 The host port is bound to loopback. Set `TIMONE_PORT` before starting Compose to use another port.
 
-## Deploy to Kubernetes
-
-The included Helm chart runs Timone in `incluster` mode using a dedicated ServiceAccount. Install with Helm and kubectl configured for your target cluster:
-
-```sh
-kubectl create namespace timone
-kubectl -n timone create secret generic timone-auth \
-  --from-literal=token="$(openssl rand -hex 32)"
-helm upgrade --install timone ./deploy/helm/timone \
-  --namespace timone \
-  --set auth.existingSecret=timone-auth
-kubectl -n timone port-forward service/timone-timone 8080:8080
-```
-
-Open <http://127.0.0.1:8080> and log in using the Secret's `token` value. The chart defaults to the image version in [Chart.yaml](deploy/helm/timone/Chart.yaml); override `image.repository`, `image.tag`, or `image.digest` for your deployment.
-
-Review [values.yaml](deploy/helm/timone/values.yaml) for scope, RBAC, ingress, resource limits, and integrations. By default, namespace scope is cluster-wide; Secret reads, pod logs, and Helm details are disabled. Set `scope.namespace` to restrict namespaced resource access, and `rbac.clusterResources=false` to omit cluster-scoped visibility. Helm details require both `helmDetails.enabled=true` and `rbac.secrets=true`.
-
-For ingress, configure TLS and `publicURL` for the external HTTPS origin. Optional NetworkPolicy settings can restrict incoming connections to your gateway.
-
 ## Configuration and authentication
 
 Timone reads environment variables directly. It **does not automatically load `.env` files**; Docker Compose separately uses its own environment-file handling. See [.env.example](.env.example) for the full configuration reference.

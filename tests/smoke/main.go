@@ -1,4 +1,4 @@
-// Command smoke exercises a built demo binary or a local container image.
+// Command smoke exercises a built demo binary.
 // It never reads kubeconfig or contacts a real cluster.
 package main
 
@@ -40,7 +40,6 @@ func run() (err error) {
 		}
 	}()
 	binary := flag.String("binary", "./bin/timone", "built binary path")
-	image := flag.String("image", "", "local image to run instead of binary")
 	flag.Parse()
 	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
 	defer cancel()
@@ -60,90 +59,60 @@ func run() (err error) {
 	base := ""
 	var stop func() error
 	tokenFile := ""
-	if *image == "" {
-		dir, err := os.MkdirTemp("", "timone-smoke-")
-		if err != nil {
-			return err
-		}
-		defer os.RemoveAll(dir)
-		tokenFile = filepath.Join(dir, "token")
-		if err := os.WriteFile(tokenFile, []byte(token), 0600); err != nil {
-			return err
-		}
-		env = append(env, "TIMONE_TOKEN_FILE="+tokenFile)
-		cmd := exec.CommandContext(ctx, *binary)
-		cmd.Env = env
-		stdout, err := cmd.StdoutPipe()
-		if err != nil {
-			return err
-		}
-		cmd.Stderr = io.Discard
-		if err := cmd.Start(); err != nil {
-			return err
-		}
-		done := make(chan error, 1)
-		go func() { done <- cmd.Wait() }()
-		defer func() { _ = cmd.Process.Kill() }()
-		addresses := make(chan string, 1)
-		go func() {
-			scanner := bufio.NewScanner(stdout)
-			for scanner.Scan() {
-				var entry struct{ Msg, Address string }
-				if json.Unmarshal(scanner.Bytes(), &entry) == nil && entry.Msg == "Timone starting" {
-					addresses <- entry.Address
-					return
-				}
+	dir, err := os.MkdirTemp("", "timone-smoke-")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(dir)
+	tokenFile = filepath.Join(dir, "token")
+	if err := os.WriteFile(tokenFile, []byte(token), 0600); err != nil {
+		return err
+	}
+	env = append(env, "TIMONE_TOKEN_FILE="+tokenFile)
+	cmd := exec.CommandContext(ctx, *binary)
+	cmd.Env = env
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return err
+	}
+	cmd.Stderr = io.Discard
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	done := make(chan error, 1)
+	go func() { done <- cmd.Wait() }()
+	defer func() { _ = cmd.Process.Kill() }()
+	addresses := make(chan string, 1)
+	go func() {
+		scanner := bufio.NewScanner(stdout)
+		for scanner.Scan() {
+			var entry struct{ Msg, Address string }
+			if json.Unmarshal(scanner.Bytes(), &entry) == nil && entry.Msg == "Timone starting" {
+				addresses <- entry.Address
+				return
 			}
-			addresses <- ""
-		}()
+		}
+		addresses <- ""
+	}()
+	select {
+	case address := <-addresses:
+		check(address != "", "binary did not reach startup (loopback listening may be prohibited)")
+		base = "http://" + address
+	case <-time.After(10 * time.Second):
+		return errors.New("binary startup timed out")
+	}
+	stop = func() error {
+		if err := cmd.Process.Signal(syscall.SIGTERM); err != nil {
+			return err
+		}
 		select {
-		case address := <-addresses:
-			check(address != "", "binary did not reach startup (loopback listening may be prohibited)")
-			base = "http://" + address
-		case <-time.After(10 * time.Second):
-			return errors.New("binary startup timed out")
-		}
-		stop = func() error {
-			if err := cmd.Process.Signal(syscall.SIGTERM); err != nil {
-				return err
-			}
-			select {
-			case err := <-done:
-				return err
-			case <-time.After(10 * time.Second):
-				return errors.New("graceful shutdown timed out")
-			}
-		}
-	} else {
-		// Docker receives a synthetic test credential through its environment, not a command argument.
-		args := []string{"run", "-d", "--read-only", "--cap-drop=ALL", "--security-opt=no-new-privileges:true", "-p", "127.0.0.1::8080", "-e", "TIMONE_ENV=development", "-e", "TIMONE_MODE=demo", "-e", "TIMONE_LISTEN=0.0.0.0:8080", "-e", "TIMONE_ACCESS_LOG=false", "-e", "TIMONE_TOKEN", "-e", "TIMONE_DIAGNOSTICS_STARTUP_GRACE_SECONDS=420", "-e", "TIMONE_DIAGNOSTICS_WARNING_EVENT_WINDOW_SECONDS=600", "-e", "TIMONE_DIAGNOSTICS_RESTART_THRESHOLD=8", *image}
-		cmd := exec.CommandContext(ctx, "docker", args...)
-		cmd.Env = append(env, "TIMONE_TOKEN="+token)
-		out, err := cmd.Output()
-		if err != nil {
-			return fmt.Errorf("container start failed: %w", err)
-		}
-		id := strings.TrimSpace(string(out))
-		defer func() { _ = exec.Command("docker", "rm", "-f", id).Run() }()
-		port, err := exec.CommandContext(ctx, "docker", "port", id, "8080/tcp").Output()
-		if err != nil {
+		case err := <-done:
 			return err
-		}
-		base = "http://" + strings.TrimSpace(string(port))
-		stop = func() error {
-			if err := exec.CommandContext(ctx, "docker", "stop", "-t", "10", id).Run(); err != nil {
-				return err
-			}
-			exit, err := exec.CommandContext(ctx, "docker", "inspect", "--format", "{{.State.ExitCode}}", id).Output()
-			if err != nil {
-				return err
-			}
-			if strings.TrimSpace(string(exit)) != "0" {
-				return errors.New("container did not exit cleanly")
-			}
-			return nil
+		case <-time.After(10 * time.Second):
+			return errors.New("graceful shutdown timed out")
 		}
 	}
+
 	client := &http.Client{Timeout: 3 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 	call := func(method, path, body, credential string, cookie *http.Cookie) (int, []byte, http.Header) {
 		r, err := http.NewRequestWithContext(ctx, method, base+path, strings.NewReader(body))

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Keep desktop and Helm metadata in sync with web/package.json."""
+"""Keep application and desktop metadata in sync with web/package.json."""
 
 import argparse
 import json
@@ -27,13 +27,6 @@ def main():
         data = json.loads(content)
         old = json.dumps(data["version"])
         outputs[path] = content.replace('"version": ' + old, '"version": ' + json.dumps(version), 1)
-    chart = ROOT / "deploy/helm/timone/Chart.yaml"
-    content = chart.read_text()
-    for field in ("version", "appVersion"):
-        content, count = re.subn(rf"^{field}:.*$", f'{field}: "{version}"', content, flags=re.MULTILINE)
-        if count != 1:
-            parser.error(f"Expected exactly one {field} in {chart}")
-    outputs[chart] = content
     stale = [path for path, content in outputs.items() if path.read_text() != content]
     if args.check and stale:
         parser.exit(1, "Version metadata is out of sync; run python3 scripts/version.py\n")

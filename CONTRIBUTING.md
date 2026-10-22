@@ -28,7 +28,7 @@ pnpm --dir web run dev
 
 Open <http://127.0.0.1:5173>. Vite proxies `/api` and `/mcp` to the backend on port 8080. Demo mode needs no Kubernetes credentials. Stop both processes with Ctrl+C.
 
-See [README.md](README.md) for local-cluster access, Docker Compose, authentication, and deployment. Configuration is documented in [.env.example](.env.example); the application does not automatically load `.env` files.
+See [README.md](README.md) for local-cluster access, Docker Compose, and authentication. Configuration is documented in [.env.example](.env.example); the application does not automatically load `.env` files.
 
 ## Validation
 
@@ -57,20 +57,13 @@ pnpm --dir web run test:browser
 
 The browser runner starts `bin/timone` in demo mode on port 18080; leave that port available. Reports are written to `playwright-report/` and `test-results/`.
 
-For Helm changes, install Helm and validate the chart and rendered deployment contracts:
-
-```sh
-helm lint ./deploy/helm/timone --set auth.existingSecret=test-auth
-go run ./tests/helm
-```
-
 For changes that need live Kubernetes acceptance coverage, use:
 
 ```sh
 sh tests/cluster/run.sh
 ```
 
-This requires Docker, Helm, kubectl, and kind v0.33.0 and creates and removes a disposable `timone-acceptance` cluster for each pinned Kubernetes version. Inspect the script before running it. Alternatively, `TIMONE_ACCEPTANCE_KUBECONFIG` selects an existing test cluster; use a dedicated test environment for these checks.
+This requires Docker and kind v0.33.0 and creates and removes a disposable `timone-acceptance` cluster for each pinned Kubernetes version. Inspect the script before running it. Alternatively, `TIMONE_ACCEPTANCE_KUBECONFIG` selects an existing test cluster; use a dedicated test environment for these checks.
 
 ## Submit a pull request
 

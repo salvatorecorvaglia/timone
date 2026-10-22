@@ -265,16 +265,3 @@ jobs:
             exit 0
           fi
           python3 scripts/publish_homebrew.py --formula release/timone.rb
-
-  distribution:
-    name: Container and Helm
-    needs: publish
-    if: ${{ vars.PUBLISH_CONTAINER == 'true' && !contains(github.ref_name, '-') && !contains(github.ref_name, '+') }}
-    permissions:
-      contents: write
-      packages: write
-      pages: write
-      id-token: write
-    uses: ./.github/workflows/distribution.yml
-    with:
-      version: ${{ github.ref_name }}

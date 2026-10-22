@@ -1,4 +1,0 @@
-# Test-only override: exercise SIGINT through the image's actual PID 1.
-services:
-  timone:
-    stop_signal: SIGINT

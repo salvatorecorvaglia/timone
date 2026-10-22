@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Reorganized the README around source builds, cluster access, deployment, configuration, and development workflows.
 
+### Removed
+
+- Container image publication to GHCR, Helm chart distribution, and their dedicated workflows and tests.
+
 ### Fixed
 
 - Retry desktop packaging up to three times when macOS cannot detach a temporary DMG volume because the device is busy; other packaging failures still fail immediately.

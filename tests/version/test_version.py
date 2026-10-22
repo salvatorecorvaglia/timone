@@ -20,9 +20,6 @@ class VersionTests(unittest.TestCase):
             path = self.root / name
             path.parent.mkdir(parents=True)
             path.write_text('{"version": "1.0.0", "name": "timone"}\n')
-        chart = self.root / "deploy/helm/timone/Chart.yaml"
-        chart.parent.mkdir(parents=True)
-        chart.write_text('name: timone\nversion: "1.0.0"\nappVersion: "1.0.0"\n')
 
     def run_command(self, *args):
         with patch.object(version, "ROOT", self.root), patch.object(sys, "argv", ["version.py", *args]):
@@ -32,7 +29,6 @@ class VersionTests(unittest.TestCase):
         self.run_command("--set", "1.0.1")
         for name in ("web/package.json", "desktop/package.json"):
             self.assertEqual(json.loads((self.root / name).read_text()), {"version": "1.0.1", "name": "timone"})
-        self.assertEqual((self.root / "deploy/helm/timone/Chart.yaml").read_text(), 'name: timone\nversion: "1.0.1"\nappVersion: "1.0.1"\n')
         self.run_command("--check")
 
     def test_check_detects_drift_without_writing_and_sync_repairs_it(self):

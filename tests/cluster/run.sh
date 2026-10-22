@@ -32,7 +32,6 @@ do
   owned=true
   kind create cluster --name timone-acceptance --image "$image" --kubeconfig "$TIMONE_ACCEPTANCE_KUBECONFIG" --wait 180s
   go test -count=1 -timeout=8m -v ./tests/cluster
-  sh tests/helm/cluster.sh
   kind delete cluster --name timone-acceptance
   owned=false
 done
