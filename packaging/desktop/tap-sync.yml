@@ -36,4 +36,14 @@ jobs:
   test:
     needs: sync
     if: ${{ needs.sync.outputs.ready == 'true' && (needs.sync.outputs.changed == 'true' || github.event_name != 'schedule') }}
-    uses: ./.github/workflows/desktop.yml
+    runs-on: macos-15
+    timeout-minutes: 15
+    env:
+      HOMEBREW_NO_AUTO_UPDATE: '1'
+      HOMEBREW_NO_ANALYTICS: '1'
+    steps:
+      - name: Install the public desktop cask
+        run: |
+          brew install --cask salvatorecorvaglia/tap/timone-desktop
+          test -x /Applications/Timone.app/Contents/MacOS/Timone
+          test -x /Applications/Timone.app/Contents/Resources/timone
