@@ -33,7 +33,32 @@ class Timone < Formula
   end
 
   test do
+    require "json"
+    require "timeout"
+
     assert_equal "Timone #{version}", shell_output("#{bin}/timone --version").strip
     assert_equal "Timone #{version}", shell_output("#{bin}/kubectl-timone --version").strip
+
+    port = free_port
+    environment = ENV.keys.grep(/^TIMONE_/).to_h { |key| [key, nil] }
+    environment.merge!("TIMONE_ENV" => "development", "KUBECONFIG" => (testpath/"missing-kubeconfig").to_s)
+    pid = spawn environment, bin/"timone", "--mode", "demo", "--no-browser",
+                "--listen", "127.0.0.1:#{port}", out: (testpath/"timone.log").to_s, err: [:child, :out]
+    begin
+      response = shell_output("curl --silent --show-error --fail --noproxy '*' " \
+                              "--retry 10 --retry-connrefused --retry-delay 1 --retry-max-time 15 " \
+                              "--connect-timeout 1 --max-time 2 http://127.0.0.1:#{port}/healthz")
+      assert_equal "ok", JSON.parse(response).fetch("status")
+    ensure
+      Process.kill("TERM", pid)
+      begin
+        _, status = Timeout.timeout(10) { Process.wait2(pid) }
+      rescue Timeout::Error
+        Process.kill("KILL", pid)
+        Process.wait(pid)
+        flunk "Timone did not shut down within 10 seconds"
+      end
+    end
+    assert_predicate status, :success?
   end
 end
