@@ -1,6 +1,6 @@
 {
   "name": "timone-desktop",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Timone desktop — read-only Kubernetes insights and diagnostics",
   "private": true,
   "main": "main.cjs",
