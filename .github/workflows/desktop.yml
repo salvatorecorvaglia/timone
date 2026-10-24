@@ -3,9 +3,9 @@ name: Desktop
 on:
   push:
     branches: [main]
-    paths: ['desktop/**', 'cmd/**', 'internal/**', 'web/**', 'go.mod', 'go.sum', 'tests/desktop/**', '.github/workflows/desktop.yml']
+    paths: ['desktop/**', 'cmd/**', 'internal/**', 'web/**', 'go.mod', 'go.sum', 'tests/**', 'scripts/**', 'packaging/**', 'README.md', 'LICENSE', 'CHANGELOG.md', '.github/workflows/desktop.yml']
   pull_request:
-    paths: ['desktop/**', 'cmd/**', 'internal/**', 'web/**', 'go.mod', 'go.sum', 'tests/desktop/**', '.github/workflows/desktop.yml']
+    paths: ['desktop/**', 'cmd/**', 'internal/**', 'web/**', 'go.mod', 'go.sum', 'tests/**', 'scripts/**', 'packaging/**', 'README.md', 'LICENSE', 'CHANGELOG.md', '.github/workflows/desktop.yml']
   workflow_dispatch:
   workflow_call:
 
@@ -36,16 +36,16 @@ jobs:
     env:
       CI: true
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           persist-credentials: false
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         with:
           go-version-file: go.mod
-      - uses: pnpm/action-setup@v5
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5
         with:
           package_json_file: desktop/package.json
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: '24'
           cache: pnpm
@@ -151,9 +151,10 @@ jobs:
           if command -v kind >/dev/null; then kind delete cluster --name timone-desktop-acceptance; fi
 
       - name: Upload installers
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: desktop-installers-${{ runner.os }}-${{ matrix.arch }}
+          compression-level: 0
           path: |
             desktop/dist/*.dmg
             desktop/dist/*.zip
@@ -165,7 +166,7 @@ jobs:
 
       - name: Upload desktop test screenshot
         if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: desktop-report-${{ runner.os }}-${{ matrix.arch }}
           path: desktop/test-results/
