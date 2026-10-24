@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/netip"
@@ -10,6 +11,34 @@ import (
 	"testing"
 	"time"
 )
+
+func TestTokenFileLengthAndNewlineBoundaries(t *testing.T) {
+	for _, size := range []int{31, 32, MaxTokenBytes, MaxTokenBytes + 1} {
+		for _, ending := range []string{"", "\n", "\r\n", "\r"} {
+			t.Run(fmt.Sprintf("%d/%q", size, ending), func(t *testing.T) {
+				path := filepath.Join(t.TempDir(), "token")
+				want := strings.Repeat("x", size)
+				if err := os.WriteFile(path, []byte(want+ending), 0600); err != nil {
+					t.Fatal(err)
+				}
+				got, err := ReadTokenFile(path)
+				valid := size >= 32 && size <= MaxTokenBytes
+				if (err == nil) != valid || (valid && got != want) {
+					t.Fatalf("valid=%v token length=%d error=%v", valid, len(got), err)
+				}
+			})
+		}
+	}
+	for _, token := range []string{strings.Repeat("x", 31) + " ", strings.Repeat("x", 32) + "\n\n", strings.Repeat("x", MaxTokenBytes+3)} {
+		path := filepath.Join(t.TempDir(), "token")
+		if err := os.WriteFile(path, []byte(token), 0600); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := ReadTokenFile(path); err == nil {
+			t.Fatal("invalid token accepted")
+		}
+	}
+}
 
 func requestCookie(id string) *http.Request {
 	r := httptest.NewRequest("GET", "http://localhost/", nil)

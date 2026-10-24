@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildGraph } from './Topology';
+import { buildGraph, topologyHealthColor } from './Topology';
 import { fixtures } from './test-helpers';
 import type { Graph } from '../types';
 const graph = fixtures['/api/v1/topology'] as Graph;
@@ -13,6 +13,39 @@ const options = {
   labels: false,
 };
 describe('topology visibility and layout', () => {
+  it('preserves warning and unknown health in the minimap', () => {
+    expect(['healthy', 'warning', 'critical', 'unknown'].map(topologyHealthColor)).toEqual([
+      'var(--healthy)',
+      'var(--warning)',
+      'var(--critical)',
+      'var(--graph-unknown)',
+    ]);
+  });
+  it.each(['accepted', 'resolvedRefs'] as const)(
+    'marks a false controller %s condition as critical',
+    (condition) => {
+      const routing = graph.edges.find((edge) => edge.routing)!;
+      const result = buildGraph(
+        {
+          ...graph,
+          edges: [
+            {
+              ...routing,
+              routing: {
+                ...routing.routing!,
+                state: 'allowed',
+                accepted: 'True',
+                resolvedRefs: 'True',
+                [condition]: 'False',
+              },
+            },
+          ],
+        },
+        options,
+      );
+      expect(result.edges[0].style?.stroke).toBe('var(--critical)');
+    },
+  );
   it('never retains edges whose endpoints are hidden by caps or filters', () => {
     for (const group of ['', 'workloads', 'configuration', 'networking']) {
       const result = buildGraph(graph, { ...options, group, limit: 3, showPods: false });

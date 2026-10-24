@@ -1,6 +1,4 @@
 import { useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
 import { request, useAPI } from '../lib/api';
 import { ErrorState, Loading } from '../components/ui';
 
@@ -19,8 +17,6 @@ export function WorkspaceSwitcher({ close }: { close: () => void }) {
   const [confirm, setConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<Error | null>(null);
-  const qc = useQueryClient();
-  const navigate = useNavigate();
   if (data.isPending) return <Loading />;
   if (data.error) return <ErrorState error={data.error} />;
   const workspace = data.data;
@@ -42,13 +38,7 @@ export function WorkspaceSwitcher({ close }: { close: () => void }) {
             confirm,
           }),
         })
-          .then(async () => {
-            await qc.cancelQueries();
-            qc.clear();
-            navigate('/', { replace: true });
-            close();
-            window.dispatchEvent(new Event('timone:workspace-changed'));
-          })
+          .then(close)
           .catch((e) => {
             setError(e);
             void data.refetch();

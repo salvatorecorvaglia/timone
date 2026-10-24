@@ -36,6 +36,12 @@ import { resourceURL, useAPI } from '../lib/api';
 import type { Graph, Resource } from '../types';
 import { Empty, ErrorState, Loading, PageTitle, Panel, Status, Warnings } from '../components/ui';
 type ResourceNode = Node<{ resource: Resource }, 'resource'>;
+export function topologyHealthColor(health: string) {
+  return (
+    { healthy: 'var(--healthy)', warning: 'var(--warning)', critical: 'var(--critical)' }[health] ??
+    'var(--graph-unknown)'
+  );
+}
 function GraphControls() {
   const { zoomIn, zoomOut, fitView } = useReactFlow();
   return (
@@ -190,7 +196,9 @@ export function buildGraph(
       type: 'smoothstep',
       style: {
         stroke: e.routing
-          ? e.routing.state === 'denied' || e.routing.accepted === 'False'
+          ? e.routing.state === 'denied' ||
+            e.routing.accepted === 'False' ||
+            e.routing.resolvedRefs === 'False'
             ? 'var(--critical)'
             : e.routing.state === 'unknown'
               ? 'var(--graph-unknown)'
@@ -373,11 +381,7 @@ export function Topology({ namespace }: { namespace: string }) {
                 />
                 <GraphControls />
                 <MiniMap
-                  nodeColor={(n) =>
-                    (n.data.resource as Resource).health === 'critical'
-                      ? 'var(--critical)'
-                      : 'var(--healthy)'
-                  }
+                  nodeColor={(n) => topologyHealthColor((n.data.resource as Resource).health)}
                   maskColor="var(--graph-mask)"
                   pannable
                   zoomable

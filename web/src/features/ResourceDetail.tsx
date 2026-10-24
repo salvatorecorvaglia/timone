@@ -1,5 +1,5 @@
 import { ScopedLink as Link } from '../components/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -48,7 +48,24 @@ function ResourceInvestigation({ custom = false }: { custom?: boolean }) {
       : `/api/v1/resources/${encodeURIComponent(builtinKind)}/${encodeURIComponent(namespace)}/${encodeURIComponent(name)}`,
   );
   const kind = custom ? (data.data?.resource.kind ?? 'Custom resource') : builtinKind;
-  const tab = params.get('tab') ?? 'summary';
+  const requestedTab = params.get('tab') ?? 'summary';
+  const validTab =
+    ['summary', 'manifest', 'events'].includes(requestedTab) ||
+    (!custom &&
+      ((builtinKind === 'Pod' && requestedTab === 'logs') ||
+        (builtinKind === 'ServiceAccount' && requestedTab === 'grants')));
+  const tab = validTab ? requestedTab : 'summary';
+  useEffect(() => {
+    if (validTab) return;
+    setParams(
+      (previous) => {
+        const next = new URLSearchParams(previous);
+        next.delete('tab');
+        return next;
+      },
+      { replace: true },
+    );
+  }, [validTab, setParams]);
   const [container, setContainer] = useState('');
   const logs = useQuery({
     queryKey: ['logs', ns, name, container],

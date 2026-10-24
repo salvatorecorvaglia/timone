@@ -16,8 +16,7 @@ export async function request<T>(path: string, options?: RequestInit): Promise<T
     if (startedRevision !== workspaceRevision)
       throw new APIError('Previous workspace response discarded', 409);
     workspaceRevision = revision;
-    if (!(path === '/api/v1/workspace' && options?.method === 'POST'))
-      window.dispatchEvent(new Event('timone:workspace-changed'));
+    window.dispatchEvent(new Event('timone:workspace-changed'));
   } else if (revision) workspaceRevision = revision;
   let body: Awaited<ReturnType<Response['json']>>;
   try {

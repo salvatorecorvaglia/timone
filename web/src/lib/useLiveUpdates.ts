@@ -35,6 +35,7 @@ export function useLiveUpdates() {
       }
     };
     const changed = () => {
+      if (disposed) return;
       disposed = true;
       clearTimeout(timer);
       stream.close();

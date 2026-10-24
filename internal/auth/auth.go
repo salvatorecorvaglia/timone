@@ -64,8 +64,9 @@ func ReadTokenFile(path string) (string, error) {
 		return "", fmt.Errorf("authentication token file unavailable")
 	}
 	defer f.Close()
-	b, err := io.ReadAll(io.LimitReader(f, MaxTokenBytes+2))
-	if err != nil || len(b) > MaxTokenBytes+1 {
+	// Reserve two bytes for CRLF and one sentinel byte to detect excess input.
+	b, err := io.ReadAll(io.LimitReader(f, MaxTokenBytes+3))
+	if err != nil || len(b) > MaxTokenBytes+2 {
 		return "", fmt.Errorf("authentication token file invalid")
 	}
 	token := strings.TrimSuffix(strings.TrimSuffix(string(b), "\n"), "\r")

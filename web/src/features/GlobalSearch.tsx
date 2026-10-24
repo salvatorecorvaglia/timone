@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowUpRight, Box, ChevronLeft, ChevronRight } from 'lucide-react';
 import { request } from '../lib/api';
+import { queryInteger } from '../lib/pagination';
 import type { CustomCatalog, SearchHit, SearchResult } from '../types';
 import { Empty, ErrorState, Loading, Status, Warnings } from '../components/ui';
 
@@ -42,14 +43,8 @@ export function GlobalResults({
   if (type.startsWith('custom:')) filters.set('definition', type.slice(7));
   else if (type) filters.set('kind', type);
   if (status) filters.set('status', status);
-  const key = filters.toString();
-  const rawOffset = Number(params.get('goffset') ?? 0);
-  const [page, setPage] = useState({
-    key,
-    offset: Number.isInteger(rawOffset) && rawOffset >= 0 && rawOffset <= 5000 ? rawOffset : 0,
-  });
+  const offset = queryInteger(params, 'goffset', 0, 0, 5000);
   const changePage = (value: number) => {
-    setPage({ key, offset: value });
     setParams(
       (prev) => {
         const next = new URLSearchParams(prev);
@@ -59,7 +54,6 @@ export function GlobalResults({
       { replace: true },
     );
   };
-  const offset = page.key === key ? page.offset : 0;
   filters.set('offset', String(offset));
   const path = `/api/v1/search?${filters}`;
   const data = useQuery({

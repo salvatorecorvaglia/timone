@@ -102,6 +102,21 @@ describe('Global resource search', () => {
     expect(screen.getByText(/Collection read denied/)).toBeInTheDocument();
     expect(screen.queryByText('No matching resources')).not.toBeInTheDocument();
   });
+  it('returns to page one when revisiting a previous search term', async () => {
+    const api = mockAPI();
+    show(<App />, '/?gsearch=1&gq=production');
+    await screen.findByText('1–20');
+    fireEvent.click(screen.getByRole('button', { name: 'Next search results' }));
+    await screen.findByText('21–40');
+    const input = screen.getByLabelText('Search all resources');
+    fireEvent.change(input, { target: { value: 'orders-db' } });
+    await screen.findAllByRole('button', { name: /Inspect Database.*orders-db/ });
+    fireEvent.change(input, { target: { value: 'production' } });
+    await screen.findByText('1–20');
+    expect(screen.getByTestId('location')).not.toHaveTextContent('goffset');
+    const searches = api.mock.calls.filter(([url]) => String(url).startsWith('/api/v1/search?'));
+    expect(String(searches.at(-1)?.[0])).toContain('offset=0');
+  });
   it('hides previous results while a new term is being debounced', async () => {
     mockAPI();
     show(<App />);

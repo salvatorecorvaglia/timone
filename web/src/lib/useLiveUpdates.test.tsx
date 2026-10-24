@@ -96,6 +96,7 @@ it('closes the old stream and cancels queries immediately on workspace replaceme
     ),
   });
   act(() => window.dispatchEvent(new Event('timone:workspace-changed')));
+  act(() => window.dispatchEvent(new Event('timone:workspace-changed')));
   expect(cancel).toHaveBeenCalledTimes(1);
   expect(Stream.current.closed).toBe(true);
   hook.unmount();
