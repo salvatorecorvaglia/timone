@@ -1,7 +1,7 @@
 # Reproducible scanner environment; never part of the production image.
 FROM node:24-alpine AS node
 RUN corepack enable && corepack prepare pnpm@11.23.0 --activate
-FROM golang:1.26.9-alpine
+FROM golang:1.26.10-alpine
 RUN apk add --no-cache libstdc++
 COPY --from=node /usr/local/bin/node /usr/local/bin/node
 COPY --from=node /usr/local/lib/node_modules/corepack /usr/local/lib/node_modules/corepack
@@ -14,5 +14,8 @@ RUN go mod download
 COPY cmd/ cmd/
 COPY internal/ internal/
 COPY web/ web/
+COPY desktop/package.json desktop/pnpm-lock.yaml desktop/pnpm-workspace.yaml desktop/
+COPY scripts/audit-desktop.mjs scripts/
+COPY tests/security/ tests/security/
 RUN pnpm --dir web install --frozen-lockfile --ignore-scripts && pnpm --dir web run build
-RUN pnpm --dir web audit --audit-level=low && govulncheck ./cmd/... ./internal/...
+RUN pnpm --dir web audit --audit-level=low && node --test tests/security/desktop-audit.test.mjs && node scripts/audit-desktop.mjs && govulncheck ./cmd/... ./internal/...

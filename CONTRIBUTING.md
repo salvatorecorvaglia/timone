@@ -65,6 +65,17 @@ sh tests/cluster/run.sh
 
 This requires Docker and kind v0.33.0 and creates and removes a disposable `timone-acceptance` cluster for each pinned Kubernetes version. Inspect the script before running it. Alternatively, `TIMONE_ACCEPTANCE_KUBECONFIG` selects an existing test cluster; use a dedicated test environment for these checks.
 
+The scheduled Kubernetes acceptance workflow runs both pinned versions weekly and can
+also be started manually. It retains a separate restricted overview response for
+each version and renders the latest response in the browser acceptance test. Set
+`TIMONE_ACCEPTANCE_ARTIFACTS` when running the script locally to retain the same
+per-version evidence.
+
+CI gates dependency security with `pnpm --dir web audit --audit-level=low`,
+`node scripts/audit-desktop.mjs`, and the pinned Go vulnerability scanner. The desktop
+review permits only its explicitly tested build-dependency exception; new advisories,
+runtime exposure, and scanner failures fail the gate.
+
 ## Submit a pull request
 
 Use the [pull request template](.github/PULL_REQUEST_TEMPLATE/PULL_REQUEST_TEMPLATE.md). Describe the change, link any related issue, and list the checks you ran. Include screenshots for visible UI changes and call out any migration or configuration steps reviewers need to try the change. If a check could not be run, say why.

@@ -174,10 +174,40 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+  security:
+    name: Dependency security
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5
+        with:
+          package_json_file: web/package.json
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
+      - name: Install frontend dependencies without lifecycle scripts
+        run: pnpm --dir web install --frozen-lockfile --ignore-scripts
+      - name: Build embedded frontend
+        run: pnpm --dir web run build
+      - name: Audit frontend dependencies
+        run: pnpm --dir web audit --audit-level=low
+      - name: Review desktop advisories and exception boundaries
+        run: |
+          node --test tests/security/desktop-audit.test.mjs
+          node scripts/audit-desktop.mjs
+      - name: Scan reachable Go vulnerabilities
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./cmd/... ./internal/...
+
   checks:
     name: Build and test
     if: ${{ always() }}
-    needs: [workflows, frontend, integration, packaging]
+    needs: [workflows, frontend, integration, packaging, security]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -187,10 +217,11 @@ jobs:
           FRONTEND_RESULT: ${{ needs.frontend.result }}
           INTEGRATION_RESULT: ${{ needs.integration.result }}
           PACKAGING_RESULT: ${{ needs.packaging.result }}
+          SECURITY_RESULT: ${{ needs.security.result }}
         run: |
           printf '| Check | Result |\n| --- | --- |\n' >> "$GITHUB_STEP_SUMMARY"
           failed=0
-          for check in WORKFLOWS FRONTEND INTEGRATION PACKAGING; do
+          for check in WORKFLOWS FRONTEND INTEGRATION PACKAGING SECURITY; do
             variable="${check}_RESULT"
             result="${!variable}"
             printf '| %s | %s |\n' "$check" "$result" >> "$GITHUB_STEP_SUMMARY"

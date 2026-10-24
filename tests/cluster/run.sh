@@ -24,10 +24,16 @@ cleanup() {
 trap cleanup EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
+artifacts=${TIMONE_ACCEPTANCE_ARTIFACTS:-}
 for image in \
   kindest/node:v1.36.4@sha256:099e049362a1526b2db71494e1947aae99bd16290d7c895f2b7ea312e3cbfaed \
   kindest/node:v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5
 do
+  if [ -n "$artifacts" ]; then
+    version=${image#*:v}
+    version=${version%@*}
+    export TIMONE_ACCEPTANCE_ARTIFACTS="$artifacts/$version"
+  fi
   export TIMONE_ACCEPTANCE_KUBECONFIG="$work/kubeconfig"
   owned=true
   kind create cluster --name timone-acceptance --image "$image" --kubeconfig "$TIMONE_ACCEPTANCE_KUBECONFIG" --wait 180s
