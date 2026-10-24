@@ -14,7 +14,7 @@ import {
 import { request, useAPI, memory } from '../lib/api';
 import { historyRows } from '../lib/history';
 import type { HistoryCapability, MetricHistory as History, HistorySeries } from '../types';
-import { Empty, ErrorState, Loading, Panel, Warnings } from '../components/ui';
+import { TableScroll, Empty, ErrorState, Loading, Panel, Warnings } from '../components/ui';
 
 const colors = [
   'var(--healthy)',
@@ -291,7 +291,7 @@ function SampleTable({ series }: { series: HistorySeries[] }) {
       <p className="footnote">
         Showing up to 200 of {rows.length} samples. Full bounded data is available through the API.
       </p>
-      <div className="table-scroll">
+      <TableScroll>
         <table aria-label="Historical metric samples">
           <thead>
             <tr>
@@ -318,7 +318,7 @@ function SampleTable({ series }: { series: HistorySeries[] }) {
             ))}
           </tbody>
         </table>
-      </div>
+      </TableScroll>
     </>
   );
 }

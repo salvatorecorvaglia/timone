@@ -5,7 +5,15 @@ import { ArrowRight, Check, Info, LockKeyhole, Moon, Sun } from 'lucide-react';
 import { ago, request, useAPI } from '../lib/api';
 import { readPreference, writePreference } from '../lib/preferences';
 import type { Cluster, AccessSession, Connection } from '../types';
-import { CopyButton, ErrorState, PageTitle, Panel, Status, Warnings } from '../components/ui';
+import {
+  TableScroll,
+  CopyButton,
+  ErrorState,
+  PageTitle,
+  Panel,
+  Status,
+  Warnings,
+} from '../components/ui';
 import { desktop, configureDesktop } from '../lib/desktop';
 
 export function Settings({ cluster }: { cluster?: Cluster }) {
@@ -210,7 +218,7 @@ export function Settings({ cluster }: { cluster?: Cluster }) {
           >
             <Warnings items={connection.data.collectionFailures} />
             {connection.data.streams.length ? (
-              <div className="table-scroll">
+              <TableScroll>
                 <table>
                   <thead>
                     <tr>
@@ -251,7 +259,7 @@ export function Settings({ cluster }: { cluster?: Cluster }) {
                     ))}
                   </tbody>
                 </table>
-              </div>
+              </TableScroll>
             ) : (
               <div className="integration-note">
                 {connection.data.mode === 'demo'

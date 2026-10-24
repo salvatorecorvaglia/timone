@@ -1,14 +1,30 @@
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
-import { writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { gzipSync } from 'node:zlib';
+import { fileURLToPath } from 'node:url';
 export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
     {
-      name: 'embed-placeholder',
+      name: 'embedded-assets',
       apply: 'build',
+      writeBundle(options, bundle) {
+        // Read final files after Vite's CSS and preload transformations.
+        for (const fileName of Object.keys(bundle)) {
+          if (!fileName.startsWith('assets/') || !/\.(js|css)$/.test(fileName)) continue;
+          const destination = resolve(
+            options.dir ?? fileURLToPath(new URL('./dist', import.meta.url)),
+            fileName,
+          );
+          const source = readFileSync(destination);
+          if (source.length < 512) continue;
+          writeFileSync(`${destination}.gz`, gzipSync(source, { level: 9 }));
+        }
+      },
       closeBundle() {
         writeFileSync(
           new URL('./dist/.gitkeep', import.meta.url),
@@ -18,6 +34,7 @@ export default defineConfig({
     },
   ],
   server: {
+    fs: { allow: [fileURLToPath(new URL('..', import.meta.url))] },
     port: 5173,
     strictPort: true,
     proxy: {

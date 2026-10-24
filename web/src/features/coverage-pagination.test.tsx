@@ -3,6 +3,25 @@ import { expect, it, vi } from 'vitest';
 import { Overview } from './Overview';
 import { Resources } from './Resources';
 import { mockAPI, show } from './test-helpers';
+import { App } from '../app/App';
+
+it('marks the issue count unknown when overview coverage is incomplete', async () => {
+  const fetch = mockAPI();
+  const original = fetch.getMockImplementation()!;
+  fetch.mockImplementation(async (input, options) => {
+    const response = await original(input, options);
+    if (String(input).startsWith('/api/v1/overview')) {
+      const data = await response.json();
+      data.issues = [];
+      data.warnings = [{ kind: 'Pod', message: 'Read denied' }];
+      return new Response(JSON.stringify(data));
+    }
+    return response;
+  });
+  show(<App />, '/settings');
+  await screen.findByRole('heading', { name: 'Settings' });
+  expect(screen.getByLabelText('Issue count unavailable or incomplete')).toHaveTextContent('?');
+});
 
 it('uses unknown styling for unreadable deployment coverage', async () => {
   const fetch = mockAPI();

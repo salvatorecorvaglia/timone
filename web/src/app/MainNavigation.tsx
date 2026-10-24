@@ -47,7 +47,7 @@ export function MainNavigation({
   onNavigate,
 }: {
   namespace: string;
-  issues: number;
+  issues: number | null;
   onNavigate: () => void;
 }) {
   return (
@@ -64,7 +64,17 @@ export function MainNavigation({
             >
               <i.icon size={17} />
               <span>{i.name}</span>
-              {i.path === '/issues' && issues > 0 && <span className="nav-count">{issues}</span>}
+              {i.path === '/issues' && issues !== null && issues > 0 && (
+                <span className="nav-count">{issues}</span>
+              )}
+              {i.path === '/issues' && issues === null && (
+                <span
+                  className="nav-count unknown"
+                  aria-label="Issue count unavailable or incomplete"
+                >
+                  ?
+                </span>
+              )}
               {i.path === '/topology' && <span className="nav-new">GRAPH</span>}
             </NavLink>
           ))}

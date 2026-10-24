@@ -12,6 +12,7 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { ScopedLink as Link } from '../components/navigation';
 import {
+  TableScroll,
   Empty,
   ErrorState,
   Loading,
@@ -166,7 +167,7 @@ export function Resources({ namespace }: { namespace: string }) {
           <ErrorState error={data.error} retry={() => void data.refetch()} />
         ) : (
           <>
-            <div className={`table-scroll resource-table ${compact ? 'compact' : ''}`}>
+            <TableScroll className={`resource-table ${compact ? 'compact' : ''}`}>
               <table>
                 <thead>
                   <tr>
@@ -260,7 +261,7 @@ export function Resources({ namespace }: { namespace: string }) {
                 </tbody>
               </table>
               {!data.data.items.length && <Empty />}
-            </div>
+            </TableScroll>
             {data.data.truncated && (
               <div className="data-warning">
                 Kubernetes collection truncated. Select a namespace for a narrower view.

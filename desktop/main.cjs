@@ -8,7 +8,7 @@ const { isExternalURL, sameOrigin } = require('./security.cjs');
 
 const welcomePath = path.join(__dirname, 'welcome.html');
 const welcomeURL = pathToFileURL(welcomePath).href;
-const welcomeResources = new Set(['welcome.html', 'welcome.css', 'welcome.js', 'assets/icon.svg'].map((file) => pathToFileURL(path.join(__dirname, file)).href));
+const welcomeResources = new Set(['welcome.html', 'welcome.css', 'palette.css', 'welcome.js', 'assets/icon.svg'].map((file) => pathToFileURL(path.join(__dirname, file)).href));
 let window;
 let backend;
 let desktopSession;
@@ -113,7 +113,7 @@ async function start() {
   });
   window = new BrowserWindow({
     width: 1440, height: 940, minWidth: 1040, minHeight: 700,
-    title: 'Timone', backgroundColor: '#0b1019', show: false,
+    title: 'Timone', backgroundColor: '#111518', show: false,
     icon: path.join(__dirname, 'assets/icon.png'),
     webPreferences: {
       session: desktopSession, preload: path.join(__dirname, 'preload.cjs'),

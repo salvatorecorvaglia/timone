@@ -6,6 +6,7 @@ import { MetricsHistory } from './MetricsHistory';
 import { NodeBudgets } from './NodeBudgets';
 import type { Metrics } from '../types';
 import {
+  TableScroll,
   Empty,
   ErrorState,
   Loading,
@@ -146,7 +147,7 @@ export function MetricsPage({ namespace }: { namespace: string }) {
             title="Pod & container consumption"
             subtitle="Measured usage alongside configured container budgets. A missing budget is unavailable."
           >
-            <div className="table-scroll">
+            <TableScroll>
               <table>
                 <thead>
                   <tr>
@@ -213,7 +214,7 @@ export function MetricsPage({ namespace }: { namespace: string }) {
                     ))}
                 </tbody>
               </table>
-            </div>
+            </TableScroll>
             {!data.data.items.length && <Empty title="No metrics samples returned" />}
           </Panel>
         </>
@@ -224,7 +225,7 @@ export function MetricsPage({ namespace }: { namespace: string }) {
         title="Pod usage totals"
         subtitle="Aggregates require complete current container sets at one sample time. Missing or stale values remain unavailable."
       >
-        <div className="table-scroll">
+        <TableScroll>
           <table aria-label="Pod usage totals">
             <thead>
               <tr>
@@ -254,7 +255,7 @@ export function MetricsPage({ namespace }: { namespace: string }) {
               ))}
             </tbody>
           </table>
-        </div>
+        </TableScroll>
         {!data.data.podTotals?.length && <Empty title="Pod aggregate data unavailable" />}
       </Panel>
       <NodeBudgets allocations={data.data.allocations} />

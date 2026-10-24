@@ -5,7 +5,7 @@ module.exports = {
   npmRebuild: false,
   forceCodeSigning: process.env.TIMONE_REQUIRE_SIGNING === 'true',
   directories: { output: 'dist', buildResources: 'assets' },
-  files: ['main.cjs', 'backend.cjs', 'settings.cjs', 'security.cjs', 'preload.cjs', 'welcome.html', 'welcome.js', 'welcome.css', 'assets/icon.svg', 'assets/icon.png', 'package.json'],
+  files: ['main.cjs', 'backend.cjs', 'settings.cjs', 'security.cjs', 'preload.cjs', 'welcome.html', 'welcome.js', 'welcome.css', 'palette.css', 'assets/icon.svg', 'assets/icon.png', 'package.json'],
   extraResources: [{ from: 'resources', to: '.', filter: ['timone', 'timone.exe'] }],
   artifactName: 'timone-desktop_${version}_${os}_${arch}.${ext}',
   // Distribution is explicit in GitHub Actions. No background updater or

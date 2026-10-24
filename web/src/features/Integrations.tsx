@@ -14,6 +14,7 @@ import {
 import { useAPI } from '../lib/api';
 import type { Integration, IntegrationRecord } from '../types';
 import {
+  TableScroll,
   ErrorState,
   Loading,
   PageTitle,
@@ -124,7 +125,7 @@ export function Integrations({ namespace, filter }: { namespace: string; filter?
                 </p>
               )}
               {i.records.length ? (
-                <div className="table-scroll">
+                <TableScroll>
                   <table>
                     <thead>
                       <tr>
@@ -173,7 +174,7 @@ export function Integrations({ namespace, filter }: { namespace: string; filter?
                       ))}
                     </tbody>
                   </table>
-                </div>
+                </TableScroll>
               ) : (
                 <div className="integration-empty">
                   <Info size={16} />

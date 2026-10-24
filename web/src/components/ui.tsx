@@ -5,6 +5,7 @@ import { AlertCircle, ArrowUpRight, Box, Check, Copy, Inbox, LoaderCircle } from
 import { useEffect, useRef, useState } from 'react';
 import type { Health, Resource, Warning } from '../types';
 import { resourceURL } from '../lib/api';
+export { TableScroll } from './TableScroll';
 export function Status({ value, label }: { value: Health | string; label?: string }) {
   return (
     <span className={`status ${value}`}>

@@ -1,0 +1,14 @@
+/* Shared dark brand and semantic colors for desktop onboarding and the web UI. */
+:root {
+  --bg: #111518;
+  --panel: #171c20;
+  --raised: #1c2227;
+  --border: #293137;
+  --text: #e2e7eb;
+  --muted: #89959f;
+  --accent: #83dfbb;
+  --healthy: #83dfbb;
+  --warning: #e8b678;
+  --critical: #ed8591;
+  --blue: #92a8ed;
+}

@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAPI, resourceURL } from '../lib/api';
 import type { GrantReport } from '../types';
 import {
+  TableScroll,
   CopyButton,
   Empty,
   ErrorState,
@@ -71,7 +72,7 @@ export function ServiceAccountGrants({ namespace, name }: { namespace: string; n
         title="Matching bindings"
         action={<span className="count-label">{report.items.length} on this page</span>}
       >
-        <div className="table-scroll">
+        <TableScroll>
           <table aria-label="ServiceAccount RBAC bindings">
             <thead>
               <tr>
@@ -109,7 +110,7 @@ export function ServiceAccountGrants({ namespace, name }: { namespace: string; n
               ))}
             </tbody>
           </table>
-        </div>
+        </TableScroll>
         {!report.items.length && (
           <Empty
             title={
@@ -198,7 +199,7 @@ export function ServiceAccountGrants({ namespace, name }: { namespace: string; n
             ))}
           </div>
           {!!selected.rules.length && (
-            <div className="table-scroll">
+            <TableScroll>
               <table aria-label="Observed RBAC policy rules">
                 <thead>
                   <tr>
@@ -234,7 +235,7 @@ export function ServiceAccountGrants({ namespace, name }: { namespace: string; n
                   ))}
                 </tbody>
               </table>
-            </div>
+            </TableScroll>
           )}
           {!selected.rules.length && (
             <Empty

@@ -2,7 +2,7 @@ import { ScopedLink as Link } from '../components/navigation';
 
 import type { Allocation, LimitBudget } from '../types';
 import { memory } from '../lib/api';
-import { Empty, Panel } from '../components/ui';
+import { TableScroll, Empty, Panel } from '../components/ui';
 
 function Capacity({
   requested,
@@ -77,7 +77,7 @@ export function NodeBudgets({ allocations }: { allocations?: Allocation[] }) {
       title="Configured requests, limits & capacity"
       subtitle="Current non-terminal Pod specs, grouped by assigned node. Independent of measured usage; unscheduled Pods are separate."
     >
-      <div className="table-scroll">
+      <TableScroll>
         <table aria-label="Configured node resource budgets">
           <thead>
             <tr>
@@ -145,7 +145,7 @@ export function NodeBudgets({ allocations }: { allocations?: Allocation[] }) {
             description="Pod and Node read permissions are required to calculate configured demand and allocatable capacity."
           />
         )}
-      </div>
+      </TableScroll>
       <div className="panel-footnote">
         Finite totals require positive limits for every Pod in scope. Subtotals exclude Pods with
         missing or invalid limits. Configured limits above allocatable do not establish measured

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import type { Resource, DriftReport } from '../types';
 import { request } from '../lib/api';
-import { ErrorState, ResourceLink, Warnings } from '../components/ui';
+import { TableScroll, ErrorState, ResourceLink, Warnings } from '../components/ui';
 export function GitOpsDrift({ resource }: { resource: Resource }) {
   return <DriftInvestigation key={resource.id} resource={resource} />;
 }
@@ -60,7 +60,7 @@ function DriftInvestigation({ resource }: { resource: Resource }) {
                   results.
                 </p>
               )}
-              <div className="table-scroll">
+              <TableScroll>
                 <table aria-label="Desired versus live drift">
                   <thead>
                     <tr>
@@ -91,7 +91,7 @@ function DriftInvestigation({ resource }: { resource: Resource }) {
                     ))}
                   </tbody>
                 </table>
-              </div>
+              </TableScroll>
               {!data.changes.length && (
                 <p>
                   No differences observed in the compared visible fields. Coverage warnings and

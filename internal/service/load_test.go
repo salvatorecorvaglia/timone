@@ -54,5 +54,13 @@ func TestConcurrentInvestigationLoad(t *testing.T) {
 	runtime.GC()
 	runtime.ReadMemStats(&after)
 	runtime.KeepAlive(s)
+	// Bound allocation churn and retained growth, not wall time on shared CI hosts.
+	// Baseline: about 27 MiB/investigation and 4 MiB retained growth for this fixture.
+	if allocated := after.TotalAlloc - before.TotalAlloc; allocated > 80*(40<<20) {
+		t.Errorf("investigation allocation budget exceeded: %d bytes across 80 calls", allocated)
+	}
+	if after.HeapAlloc > before.HeapAlloc+(32<<20) {
+		t.Errorf("retained heap growth exceeded 32 MiB: before=%d after=%d", before.HeapAlloc, after.HeapAlloc)
+	}
 	t.Logf("5000 resources, 8 workers, 80 investigations, elapsed=%s, heap before=%d after=%d, allocated=%d", time.Since(start), before.HeapAlloc, after.HeapAlloc, after.TotalAlloc-before.TotalAlloc)
 }

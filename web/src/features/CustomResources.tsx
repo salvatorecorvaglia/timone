@@ -4,7 +4,16 @@ import { ArrowRight, ChevronLeft, ChevronRight, RefreshCw, Search } from 'lucide
 import { ago, useAPI } from '../lib/api';
 import { pagination } from '../lib/pagination';
 import type { CustomCatalog, CustomPage, CustomType } from '../types';
-import { Empty, ErrorState, Loading, PageTitle, Panel, Status, Warnings } from '../components/ui';
+import {
+  TableScroll,
+  Empty,
+  ErrorState,
+  Loading,
+  PageTitle,
+  Panel,
+  Status,
+  Warnings,
+} from '../components/ui';
 
 export function CustomResources({ namespace }: { namespace: string }) {
   const catalog = useAPI<CustomCatalog>('/api/v1/custom-resource-types');
@@ -225,7 +234,7 @@ function CustomCollection({ type, namespace }: { type: CustomType; namespace: st
               Server printer cells are unavailable; showing safe summary columns.
             </p>
           )}
-          <div className="table-scroll">
+          <TableScroll>
             <table aria-label="Custom resources">
               <thead>
                 <tr>
@@ -298,7 +307,7 @@ function CustomCollection({ type, namespace }: { type: CustomType; namespace: st
               </tbody>
             </table>
             {!data.data.items.length && <Empty />}
-          </div>
+          </TableScroll>
           {data.data.truncated && (
             <div className="data-warning">
               Collection truncated at 5,000 instances. Select a namespace or narrow the server

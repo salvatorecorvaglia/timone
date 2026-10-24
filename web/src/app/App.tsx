@@ -141,7 +141,13 @@ function Shell() {
       .find((i) =>
         i.path === '/' ? location.pathname === '/' : location.pathname.startsWith(i.path),
       )?.name ?? 'Settings';
-  const issues = overview.data?.issues.length ?? 0;
+  const issues =
+    overview.data &&
+    !overview.isError &&
+    overview.data.warnings.length === 0 &&
+    !['partial', 'unavailable'].includes(overview.data.customDiagnostics?.state)
+      ? overview.data.issues.length
+      : null;
   const scoped = cluster.data?.scope;
   const actualNS = ns || scoped || '';
   return (
@@ -267,7 +273,10 @@ function Shell() {
           </span>
           <Link className="icon-button" aria-label="View cluster issues" to="/issues">
             <Bell size={18} />
-            {issues > 0 && <i />}
+            {issues !== null && issues > 0 && <i />}
+            {issues === null && (
+              <span className="sr-only">Issue count unavailable or incomplete</span>
+            )}
           </Link>
           <Link to="/settings" className="user-avatar" aria-label="OP workspace settings">
             <span aria-hidden="true">OP</span>

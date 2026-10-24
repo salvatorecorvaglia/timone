@@ -4,6 +4,7 @@ import type { ApplicationPage } from '../types';
 import { pagination, pageRange } from '../lib/pagination';
 import { useAPI } from '../lib/api';
 import {
+  TableScroll,
   Empty,
   ErrorState,
   Loading,
@@ -70,7 +71,7 @@ export function Applications({ namespace }: { namespace: string }) {
             title="Observed applications"
             subtitle={`${data.data.total} groups in readable inventory`}
           >
-            <div className="table-scroll">
+            <TableScroll>
               <table aria-label="Applications">
                 <thead>
                   <tr>
@@ -104,7 +105,7 @@ export function Applications({ namespace }: { namespace: string }) {
                   ))}
                 </tbody>
               </table>
-            </div>
+            </TableScroll>
             {!data.data.items.length && (
               <Empty
                 title="No matching applications"

@@ -30,23 +30,24 @@ type workspaceState struct {
 }
 type WorkspaceFactory func(config.Config) (*service.Service, error)
 type Runtime struct {
-	epoch     int64
-	closed    bool
-	mu        sync.RWMutex
-	switching sync.Mutex
-	state     *workspaceState
-	retired   []*workspaceState
-	config    config.Config
-	factory   WorkspaceFactory
-	assets    fs.FS
-	broker    *Broker
-	log       *slog.Logger
-	authn     *auth.Manager
-	ctx       context.Context
+	epoch          int64
+	closed         bool
+	mu             sync.RWMutex
+	switching      sync.Mutex
+	state          *workspaceState
+	retired        []*workspaceState
+	config         config.Config
+	factory        WorkspaceFactory
+	assets         fs.FS
+	preparedAssets assetStore
+	broker         *Broker
+	log            *slog.Logger
+	authn          *auth.Manager
+	ctx            context.Context
 }
 
 func NewRuntime(ctx context.Context, s *service.Service, c config.Config, assets fs.FS, b *Broker, log *slog.Logger, factory WorkspaceFactory) *Runtime {
-	rt := &Runtime{epoch: time.Now().UnixNano(), config: c, factory: factory, assets: assets, broker: b, log: log, ctx: ctx}
+	rt := &Runtime{epoch: time.Now().UnixNano(), config: c, factory: factory, assets: assets, preparedAssets: prepareAssets(assets), broker: b, log: log, ctx: ctx}
 	rt.state = rt.makeState(s, 1)
 	return rt
 }

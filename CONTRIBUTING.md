@@ -65,16 +65,47 @@ sh tests/cluster/run.sh
 
 This requires Docker and kind v0.33.0 and creates and removes a disposable `timone-acceptance` cluster for each pinned Kubernetes version. Inspect the script before running it. Alternatively, `TIMONE_ACCEPTANCE_KUBECONFIG` selects an existing test cluster; use a dedicated test environment for these checks.
 
-The scheduled Kubernetes acceptance workflow runs both pinned versions weekly and can
-also be started manually. It retains a separate restricted overview response for
-each version and renders the latest response in the browser acceptance test. Set
-`TIMONE_ACCEPTANCE_ARTIFACTS` when running the script locally to retain the same
-per-version evidence.
+Set `TIMONE_ACCEPTANCE_ARTIFACTS` when running the script locally to retain
+per-version evidence, including a separate restricted overview response.
 
 CI gates dependency security with `pnpm --dir web audit --audit-level=low`,
 `node scripts/audit-desktop.mjs`, and the pinned Go vulnerability scanner. The desktop
 review permits only its explicitly tested build-dependency exception; new advisories,
 runtime exposure, and scanner failures fail the gate.
+
+### Performance checks
+
+Run `python3 scripts/check_benchmarks.py` for three fixed-work samples of each
+bounded service/provider benchmark. CI checks median bytes and allocations per
+operation against `tests/performance/budgets.json`; elapsed time is reported but
+not gated on shared runners. Budgets allow roughly 40% headroom for allocator and
+platform differences and should change only with an explained fixture or behavior
+change. Missing benchmark samples fail the check.
+
+The Go 1.26.10 / Apple M5 baseline measured approximately 17.8 MB/op for diagnostics
+with retained history, 26.1 MB/op for 5,000 failures with related events, 7.4 MB/op
+for dense applications, and 1.6 MB/op for 1,000 Pod metric aggregates. These are
+synthetic in-process fixtures, not cluster latency or resident-memory estimates.
+The concurrent load test separately bounds allocation churn to 40 MiB per call
+and retained heap growth to 32 MiB across its 80 investigations.
+
+For an allocation profile:
+
+```sh
+go test -run '^$' -bench 'BenchmarkDenseApplications|BenchmarkDiagnosticsWithRetainedHistory' \
+  -benchtime=10x -memprofile=/tmp/timone-allocs.out -o /tmp/timone-profile.test ./internal/service
+go run github.com/google/pprof@v0.0.0-20261016150608-1facf8f91b50 -top -alloc_space /tmp/timone-allocs.out
+```
+
+The initial profile identifies issue aggregation, relationship construction, and
+formatting as allocation hotspots; profile totals also include fixture setup.
+Preserve read authorization, projection ownership, bounds, and cancellation when
+optimizing these paths. The static asset optimization shares prepared immutable
+bytes and validators across workspace replacements and serves build-generated
+gzip variants only for JavaScript/CSS. API and SSE responses are not compressed.
+
+Core dark semantic colors live in `desktop/palette.css`, imported by both desktop
+onboarding and the web stylesheet; the web light theme overrides the same tokens.
 
 ## Submit a pull request
 

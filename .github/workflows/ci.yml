@@ -137,7 +137,7 @@ jobs:
           fi
 
       - name: Build frontend
-        run: pnpm --dir web run build
+        run: node tests/release/frontend.mjs
 
       - name: Test Go packages
         run: go test -race -count=1 -timeout=10m -coverprofile=coverage.out ./...
@@ -146,6 +146,11 @@ jobs:
         env:
           TIMONE_LOAD_TEST: '1'
         run: go test -race -count=1 -timeout=3m -run TestConcurrentInvestigationLoad -v ./internal/service
+
+      - name: Enforce allocation budgets
+        run: |
+          python3 -m unittest discover -s tests/performance -v
+          python3 scripts/check_benchmarks.py
 
       - name: Vet Go packages
         run: go vet ./...

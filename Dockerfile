@@ -4,6 +4,7 @@ COPY web/package.json web/pnpm-lock.yaml web/pnpm-workspace.yaml ./
 RUN corepack enable && corepack prepare pnpm@11.23.0 --activate
 RUN pnpm install --frozen-lockfile --ignore-scripts
 COPY web/ ./
+COPY desktop/palette.css /src/desktop/palette.css
 RUN pnpm run build
 
 FROM --platform=$BUILDPLATFORM golang:1.26.10-alpine AS backend

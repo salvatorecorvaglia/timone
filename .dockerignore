@@ -5,6 +5,10 @@
 .env
 .env.*
 web/node_modules
+desktop/node_modules
+desktop/dist
+desktop/resources
+desktop/test-results
 .pnpm-store
 web/dist
 web/src/test-fixtures.json

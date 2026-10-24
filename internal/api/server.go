@@ -20,7 +20,7 @@ type Server struct {
 	service     *service.Service
 	config      config.Config
 	broker      *Broker
-	assets      fs.FS
+	assets      assetStore
 	loginLimits loginLimiter
 	authn       *auth.Manager
 	log         *slog.Logger
@@ -36,7 +36,12 @@ func newWithRuntime(s *service.Service, c config.Config, assets fs.FS, b *Broker
 	host, _, _ := net.SplitHostPort(c.Listen)
 	ip := net.ParseIP(host)
 	anonymous := c.Token == "" && c.TokenFile == "" && c.AuthMode != "proxy" && c.Mode != "incluster" && ip != nil && ip.IsLoopback()
-	a := &Server{service: s, config: c, assets: assets, broker: b, log: log, authn: auth.New(auth.Options{Mode: c.AuthMode, Token: c.Token, TokenFile: c.TokenFile, TrustedProxies: c.TrustedProxies, Anonymous: anonymous})}
+	a := &Server{service: s, config: c, broker: b, log: log, authn: auth.New(auth.Options{Mode: c.AuthMode, Token: c.Token, TokenFile: c.TokenFile, TrustedProxies: c.TrustedProxies, Anonymous: anonymous})}
+	if runtime != nil {
+		a.assets = runtime.preparedAssets
+	} else {
+		a.assets = prepareAssets(assets)
+	}
 	a.workspace = runtime
 	if sharedAuth != nil {
 		a.authn = sharedAuth

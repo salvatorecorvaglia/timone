@@ -20,6 +20,7 @@ import { EventCard } from './EventCard';
 import { ago, request, useAPI } from '../lib/api';
 import type { Detail } from '../types';
 import {
+  TableScroll,
   CopyButton,
   Empty,
   ErrorState,
@@ -251,7 +252,7 @@ function ResourceInvestigation({ custom = false }: { custom?: boolean }) {
             </Panel>
             {containers.length > 0 && (
               <Panel title="Containers" className="span-full">
-                <div className="table-scroll">
+                <TableScroll>
                   <table>
                     <thead>
                       <tr>
@@ -282,7 +283,7 @@ function ResourceInvestigation({ custom = false }: { custom?: boolean }) {
                       })}
                     </tbody>
                   </table>
-                </div>
+                </TableScroll>
               </Panel>
             )}
           </div>

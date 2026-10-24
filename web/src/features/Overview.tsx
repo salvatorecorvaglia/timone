@@ -25,6 +25,7 @@ import {
 } from 'recharts';
 import { ScopedLink as Link } from '../components/navigation';
 import {
+  TableScroll,
   Empty,
   ErrorState,
   Loading,
@@ -359,7 +360,7 @@ export function Overview({ namespace }: { namespace: string }) {
             </Link>
           }
         >
-          <div className="table-scroll">
+          <TableScroll>
             <table>
               <thead>
                 <tr>
@@ -388,7 +389,7 @@ export function Overview({ namespace }: { namespace: string }) {
               </tbody>
             </table>
             {!d.workloads.length && <Empty />}
-          </div>
+          </TableScroll>
           <div className="panel-footnote">
             {d.workloads.length} visible workloads<span>Deployment · StatefulSet · DaemonSet</span>
           </div>

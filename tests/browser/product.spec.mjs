@@ -237,6 +237,22 @@ test('captures responsive operational screens and supports keyboard dialog focus
   expect(await page.evaluate(()=>document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 
+test('keeps resource identity visible while scrolling mobile tables', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/resources');
+  const viewport = page.getByRole('group', { name: 'Scrollable table' });
+  await expect(viewport).toBeVisible();
+  await expect(page.getByText('Scroll horizontally to see more columns.')).toBeVisible();
+  const firstCell = viewport.locator('tbody tr').first().locator('td').first();
+  const before = await firstCell.boundingBox();
+  await viewport.evaluate(el => { el.scrollLeft = el.scrollWidth; });
+  await expect.poll(() => viewport.evaluate(el => el.scrollLeft)).toBeGreaterThan(0);
+  const after = await firstCell.boundingBox();
+  expect(Math.abs(after.x - before.x)).toBeLessThan(2);
+  await viewport.focus();
+  await expect(viewport).toBeFocused();
+});
+
 test('renders CRD server columns, wide mode and versioned OpenAPI schema', async ({page})=>{
  await page.goto('/custom-resources?definition=databases.platform.timone.io&namespace=production');
  const table=page.getByRole('table',{name:'Custom resources',exact:true});

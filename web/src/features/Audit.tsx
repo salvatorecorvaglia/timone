@@ -5,6 +5,7 @@ import { AlertTriangle, Check, Info, ShieldCheck } from 'lucide-react';
 import { useAPI } from '../lib/api';
 import type { Finding, Warning } from '../types';
 import {
+  TableScroll,
   Empty,
   ErrorState,
   Loading,
@@ -92,7 +93,7 @@ export function Audit({ namespace }: { namespace: string }) {
             title="Configuration findings"
             action={<span className="count-label">{items.length}</span>}
           >
-            <div className="table-scroll">
+            <TableScroll>
               <table className="audit-table">
                 <thead>
                   <tr>
@@ -119,7 +120,7 @@ export function Audit({ namespace }: { namespace: string }) {
                 </tbody>
               </table>
               {!items.length && <Empty title="No matching findings" />}
-            </div>
+            </TableScroll>
           </Panel>
           <Panel title="Check coverage" className="coverage-panel">
             <div>

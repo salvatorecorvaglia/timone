@@ -15,6 +15,7 @@ COPY cmd/ cmd/
 COPY internal/ internal/
 COPY web/ web/
 COPY desktop/package.json desktop/pnpm-lock.yaml desktop/pnpm-workspace.yaml desktop/
+COPY desktop/palette.css desktop/
 COPY scripts/audit-desktop.mjs scripts/
 COPY tests/security/ tests/security/
 RUN pnpm --dir web install --frozen-lockfile --ignore-scripts && pnpm --dir web run build

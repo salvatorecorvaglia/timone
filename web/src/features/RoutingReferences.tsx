@@ -1,7 +1,7 @@
 import { ScopedLink as Link } from '../components/navigation';
 
 import { X } from 'lucide-react';
-import { Panel } from '../components/ui';
+import { TableScroll, Panel } from '../components/ui';
 import { resourceURL } from '../lib/api';
 import type { Graph, GraphEdge, RoutingAssessment } from '../types';
 
@@ -34,7 +34,7 @@ export function RoutingReferences({
       <p className="routing-note">
         Configuration checks and controller reports are separate. Neither confirms observed traffic.
       </p>
-      <div className="table-scroll">
+      <TableScroll>
         <table aria-label="Gateway routing references">
           <thead>
             <tr>
@@ -76,7 +76,7 @@ export function RoutingReferences({
             })}
           </tbody>
         </table>
-      </div>
+      </TableScroll>
       {edges.length > 100 && (
         <p className="data-warning">
           Showing the first 100 visible references. Narrow the namespace or resource filters.

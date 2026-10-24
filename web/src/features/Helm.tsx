@@ -4,7 +4,15 @@ import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, History, ShieldCheck } from 'lucide-react';
 import { ago, request, useAPI } from '../lib/api';
 import type { HelmComparison, HelmHistory, HelmResource } from '../types';
-import { Empty, ErrorState, Loading, PageTitle, Panel, Warnings } from '../components/ui';
+import {
+  TableScroll,
+  Empty,
+  ErrorState,
+  Loading,
+  PageTitle,
+  Panel,
+  Warnings,
+} from '../components/ui';
 
 function Inventory({ items, label }: { items: HelmResource[]; label: string }) {
   return (
@@ -86,7 +94,7 @@ export function HelmRelease() {
               </span>
             }
           >
-            <div className="table-scroll">
+            <TableScroll>
               <table>
                 <thead>
                   <tr>
@@ -126,7 +134,7 @@ export function HelmRelease() {
                   description="Review the storage warnings above. Unreadable or expired revisions are not reconstructed."
                 />
               )}
-            </div>
+            </TableScroll>
           </Panel>
           {history.data.revisions.length >= 2 && (
             <>
@@ -173,7 +181,7 @@ export function HelmRelease() {
                 ) : (
                   comparison.data && (
                     <>
-                      <div className="table-scroll">
+                      <TableScroll>
                         <table aria-label="Revision metadata comparison">
                           <thead>
                             <tr>
@@ -207,7 +215,7 @@ export function HelmRelease() {
                             )}
                           </tbody>
                         </table>
-                      </div>
+                      </TableScroll>
                       {comparison.data.inventoryComparable ? (
                         <div className="helm-inventory-grid">
                           <Inventory items={comparison.data.added} label="Added" />
@@ -222,7 +230,7 @@ export function HelmRelease() {
                       <h3>Sanitized Helm values differences</h3>
                       {comparison.data.valuesComparable ? (
                         <>
-                          <div className="table-scroll">
+                          <TableScroll>
                             <table aria-label="Helm values differences">
                               <thead>
                                 <tr>
@@ -247,7 +255,7 @@ export function HelmRelease() {
                                 ))}
                               </tbody>
                             </table>
-                          </div>
+                          </TableScroll>
                           {!comparison.data.valuesChanges.length && (
                             <p>No visible values differences; redacted values may differ.</p>
                           )}
@@ -269,7 +277,7 @@ export function HelmRelease() {
                       <h3>Sanitized manifest differences</h3>
                       {comparison.data.configurationComparable ? (
                         <>
-                          <div className="table-scroll">
+                          <TableScroll>
                             <table aria-label="Sanitized Helm configuration differences">
                               <thead>
                                 <tr>
@@ -298,7 +306,7 @@ export function HelmRelease() {
                                 ))}
                               </tbody>
                             </table>
-                          </div>
+                          </TableScroll>
                           {!comparison.data.changes.length && (
                             <p className="muted">
                               No visible differences. Redacted fields are not compared.
