@@ -115,7 +115,7 @@ func visitDeclaredEdges(ctx context.Context, snap model.Snapshot, all map[string
 			continue
 		}
 		for key, value := range r.Labels {
-			key = r.Namespace + "\x00" + key + "\x00" + fmt.Sprint(value)
+			key = r.Namespace + "\x00" + key + "\x00" + labelText(value)
 			podsByLabel[key] = append(podsByLabel[key], r)
 		}
 	}
@@ -155,7 +155,7 @@ func visitDeclaredEdges(ctx context.Context, snap model.Snapshot, all map[string
 				var candidates []model.Resource
 				first := true
 				for key, value := range sel {
-					bucket := podsByLabel[r.Namespace+"\x00"+key+"\x00"+fmt.Sprint(value)]
+					bucket := podsByLabel[r.Namespace+"\x00"+key+"\x00"+labelText(value)]
 					if first || len(bucket) < len(candidates) {
 						candidates = bucket
 						first = false
@@ -170,7 +170,7 @@ func visitDeclaredEdges(ctx context.Context, snap model.Snapshot, all map[string
 					}
 					match := true
 					for k, v := range sel {
-						if fmt.Sprint(pod.Labels[k]) != fmt.Sprint(v) {
+						if labelText(pod.Labels[k]) != labelText(v) {
 							match = false
 							break
 						}
@@ -241,4 +241,12 @@ func visitDeclaredEdges(ctx context.Context, snap model.Snapshot, all map[string
 		}
 	}
 	return ctx.Err()
+}
+
+// Kubernetes labels are strings. Keep the formatting fallback for malformed objects.
+func labelText(value any) string {
+	if text, ok := value.(string); ok {
+		return text
+	}
+	return fmt.Sprint(value)
 }

@@ -44,6 +44,8 @@ export function useAPI<T>(path: string) {
   return useQuery({
     queryKey: [path],
     queryFn: ({ signal }) => request<T>(path, { signal }),
+    // Share freshly completed shell/feature reads; live invalidation still refreshes immediately.
+    staleTime: 30000,
     refetchInterval: 30000,
     retry: 1,
   });

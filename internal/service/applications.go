@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -68,9 +69,9 @@ func (s *Service) Applications(ctx context.Context, q Query) (ApplicationPage, e
 	out.ObservedAt = snap.ObservedAt
 	all := resourceIndex(snap.Resources)
 	parent := func(r model.Resource) model.Resource {
-		seen := map[string]bool{}
-		for depth := 0; depth < 8 && !seen[r.ID]; depth++ {
-			seen[r.ID] = true
+		var seen [8]string
+		for depth := 0; depth < len(seen) && !slices.Contains(seen[:depth], r.ID); depth++ {
+			seen[depth] = r.ID
 			next := r
 			for _, v := range model.Arr(r.Object, "metadata", "ownerReferences") {
 				ref, _ := v.(map[string]any)

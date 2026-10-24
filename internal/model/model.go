@@ -32,6 +32,9 @@ func Str(o map[string]any, path ...string) string {
 	if v == nil {
 		return ""
 	}
+	if text, ok := v.(string); ok {
+		return text
+	}
 	return fmt.Sprint(v)
 }
 func Num(o map[string]any, path ...string) float64 {

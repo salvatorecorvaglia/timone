@@ -61,3 +61,19 @@ func TestEventOrderComparesInstantsAcrossOffsets(t *testing.T) {
 		t.Fatal("invalid timestamp precedes valid timestamp")
 	}
 }
+
+func TestStrPreservesUnstructuredValues(t *testing.T) {
+	for _, tc := range []struct {
+		value any
+		want  string
+	}{
+		{nil, ""}, {"label", "label"}, {42, "42"}, {true, "true"}, {json.Number("1.25"), "1.25"},
+	} {
+		if got := Str(Object{"nested": map[string]any{"value": tc.value}}, "nested", "value"); got != tc.want {
+			t.Errorf("Str(%#v) = %q, want %q", tc.value, got, tc.want)
+		}
+	}
+	if got := Str(Object{}, "missing", "value"); got != "" {
+		t.Fatalf("missing path = %q", got)
+	}
+}

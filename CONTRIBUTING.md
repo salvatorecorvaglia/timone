@@ -79,13 +79,28 @@ Run `python3 scripts/check_benchmarks.py` for three fixed-work samples of each
 bounded service/provider benchmark. CI checks median bytes and allocations per
 operation against `tests/performance/budgets.json`; elapsed time is reported but
 not gated on shared runners. Budgets allow roughly 40% headroom for allocator and
-platform differences and should change only with an explained fixture or behavior
-change. Missing benchmark samples fail the check.
+platform differences and should be tightened after measured optimizations; increases require an explained
+fixture or behavior change. Missing benchmark samples fail the check.
 
-The Go 1.26.10 / Apple M5 baseline measured approximately 17.8 MB/op for diagnostics
-with retained history, 26.1 MB/op for 5,000 failures with related events, 7.4 MB/op
-for dense applications, and 1.6 MB/op for 1,000 Pod metric aggregates. These are
-synthetic in-process fixtures, not cluster latency or resident-memory estimates.
+The Go 1.26.10 / Apple M5 measurements after optimization are approximately
+17.2 MB/op for diagnostics with retained history, 25.3 MB/op for 5,000 failures
+with related events, 6.2 MB/op for dense applications, and 1.5 MB/op for 1,000 Pod
+metric aggregates. Three fixed-work samples against the preceding commit measured
+allocation-count reductions from 150,182 to 110,183 for retained-history diagnostics,
+35,067 to 5,064 for healthy diagnostics, 195,264 to 155,262 for related failures,
+7,102 to 2,589 for dense topology, and 210,310 to 69,275 for dense applications.
+The changes avoid formatting string values, format evidence only for real signals,
+compact diagnostic evidence in place, and use bounded stack storage for controller
+cycle detection. These are synthetic in-process fixtures, not cluster latency or
+resident-memory estimates.
+
+Frontend query-sharing tests measure the shell/feature mount sequence: previously
+a feature mounting after the shell request completed triggered a second request;
+with a shared 30-second freshness window the same sequence makes one request.
+Explicit invalidation still refreshes immediately, polling remains active, and
+namespace/investigation query keys remain independent. Distinct overview and
+investigation endpoints continue separate reads to preserve their response contracts.
+
 The concurrent load test separately bounds allocation churn to 40 MiB per call
 and retained heap growth to 32 MiB across its 80 investigations.
 

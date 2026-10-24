@@ -1,10 +1,34 @@
 {
-  "BenchmarkDiagnosticsWithRetainedHistory": { "bytes": 25000000, "allocs": 210000 },
-  "BenchmarkDiagnostics5000x5000": { "bytes": 10000000, "allocs": 50000 },
-  "BenchmarkDiagnosticsRelatedFailures5000": { "bytes": 37000000, "allocs": 275000 },
-  "BenchmarkBoundedDenseTopology": { "bytes": 1900000, "allocs": 10000 },
-  "BenchmarkDenseApplications": { "bytes": 10500000, "allocs": 295000 },
-  "BenchmarkPodMetrics1000": { "bytes": 2300000, "allocs": 20000 },
-  "BenchmarkObservations5000": { "bytes": 800000, "allocs": 35000 },
-  "BenchmarkBoundedHighChurnWatchBody": { "bytes": 65000, "allocs": 65 }
+  "BenchmarkDiagnosticsWithRetainedHistory": {
+    "bytes": 24500000,
+    "allocs": 155000
+  },
+  "BenchmarkDiagnostics5000x5000": {
+    "bytes": 9200000,
+    "allocs": 7500
+  },
+  "BenchmarkDiagnosticsRelatedFailures5000": {
+    "bytes": 36000000,
+    "allocs": 220000
+  },
+  "BenchmarkBoundedDenseTopology": {
+    "bytes": 1850000,
+    "allocs": 3800
+  },
+  "BenchmarkDenseApplications": {
+    "bytes": 8900000,
+    "allocs": 100000
+  },
+  "BenchmarkPodMetrics1000": {
+    "bytes": 2200000,
+    "allocs": 7300
+  },
+  "BenchmarkObservations5000": {
+    "bytes": 750000,
+    "allocs": 29000
+  },
+  "BenchmarkBoundedHighChurnWatchBody": {
+    "bytes": 65000,
+    "allocs": 65
+  }
 }

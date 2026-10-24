@@ -1,75 +1,31 @@
-import * as Dialog from '@radix-ui/react-dialog';
+import { Sidebar } from './Sidebar';
 import {
   ArrowUpRight,
   Bell,
   Box,
   ChevronDown,
-  ChevronsUpDown,
-  CircleHelp,
-  Command,
   FlaskConical,
   Layers3,
   Menu,
   Search,
-  Settings2,
   ShieldCheck,
   Terminal,
-  X,
 } from 'lucide-react';
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
-import {
-  NavLink,
-  Route,
-  Routes,
-  useLocation,
-  useNavigate,
-  useSearchParams,
-} from 'react-router-dom';
-import { Logo } from '../components/Logo';
+import { useCallback, useEffect, useState } from 'react';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import { ScopedLink as Link } from '../components/navigation';
-import { PageBoundary } from '../components/PageBoundary';
-import { Empty, ErrorState, Loading } from '../components/ui';
+import { ErrorState } from '../components/ui';
 import { WorkspaceSwitcher } from '../features/WorkspaceSwitcher';
-import { resourceURL, useAPI } from '../lib/api';
+import { useAPI } from '../lib/api';
 import { useNamespaces } from '../lib/namespaces';
-import { withNamespace } from '../lib/navigation';
 import { useLiveUpdates } from '../lib/useLiveUpdates';
 import { useMobileNavigation } from '../lib/useMobileNavigation';
-import { VERSION } from '../lib/version';
 import type { Cluster, Connection, Overview as OverviewType } from '../types';
-import { MainNavigation, navigation } from './MainNavigation';
+import { navigation } from './MainNavigation';
 import { SessionGate } from './SessionGate';
+import { WorkspaceRoutes } from './WorkspaceRoutes';
+import { GlobalSearchDialog } from './GlobalSearchDialog';
 
-const Overview = lazy(() => import('../features/Overview').then((m) => ({ default: m.Overview })));
-const Resources = lazy(() =>
-  import('../features/Resources').then((m) => ({ default: m.Resources })),
-);
-const ResourceDetail = lazy(() =>
-  import('../features/ResourceDetail').then((m) => ({ default: m.ResourceDetail })),
-);
-const CustomResources = lazy(() =>
-  import('../features/CustomResources').then((m) => ({ default: m.CustomResources })),
-);
-const GlobalResults = lazy(() =>
-  import('../features/GlobalSearch').then((m) => ({ default: m.GlobalResults })),
-);
-const Issues = lazy(() => import('../features/Issues').then((m) => ({ default: m.Issues })));
-const Timeline = lazy(() => import('../features/Timeline').then((m) => ({ default: m.Timeline })));
-const Audit = lazy(() => import('../features/Audit').then((m) => ({ default: m.Audit })));
-const Integrations = lazy(() =>
-  import('../features/Integrations').then((m) => ({ default: m.Integrations })),
-);
-const MetricsPage = lazy(() =>
-  import('../features/MetricsPage').then((m) => ({ default: m.MetricsPage })),
-);
-const Settings = lazy(() => import('../features/Settings').then((m) => ({ default: m.Settings })));
-const Applications = lazy(() =>
-  import('../features/Applications').then((m) => ({ default: m.Applications })),
-);
-const HelmRelease = lazy(() =>
-  import('../features/Helm').then((m) => ({ default: m.HelmRelease })),
-);
-const Topology = lazy(() => import('../features/Topology').then((m) => ({ default: m.Topology })));
 export function App() {
   return (
     <SessionGate>
@@ -92,7 +48,6 @@ function Shell() {
   const mobileNavigation = useMobileNavigation(mobile, closeMobile);
   const [clusterOpen, setClusterOpen] = useState(false);
   const searchOpen = params.get('gsearch') === '1';
-  const search = params.get('gq') ?? '';
   const setSearchOpen = useCallback(
     (open: boolean) =>
       setParams(
@@ -106,25 +61,12 @@ function Shell() {
       ),
     [setParams],
   );
-  const setSearch = (value: string) =>
-    setParams(
-      (prev) => {
-        const next = new URLSearchParams(prev);
-        next.set('gq', value);
-        next.delete('goffset');
-        return next;
-      },
-      { replace: true },
-    );
-  const navigate = useNavigate();
   const location = useLocation();
-  const input = useRef<HTMLInputElement>(null);
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
         setSearchOpen(true);
-        setTimeout(() => input.current?.focus(), 0);
       }
       if (e.key === 'Escape') {
         setSearchOpen(false);
@@ -156,48 +98,14 @@ function Shell() {
         Skip to content
       </a>
       {mobile && <div className="sidebar-scrim" onClick={() => setMobile(false)} />}
-      <aside
-        id="main-navigation"
-        ref={mobileNavigation.sidebar}
-        inert={mobileNavigation.narrow && !mobile}
-        className={`sidebar ${mobile ? 'open' : ''}`}
-      >
-        <Link to="/" className="brand">
-          <Logo />
-          Timone<span className="version">{VERSION}</span>
-        </Link>
-        <button className="button mobile-menu" onClick={closeMobile}>
-          Close navigation
-        </button>
-        <div className="workspace-label">
-          <span className="workspace-avatar">T</span>
-          <div>
-            Timone workspace<small>Cluster operations</small>
-          </div>
-          <ChevronsUpDown size={14} />
-        </div>
-        <MainNavigation namespace={ns} issues={issues} onNavigate={() => setMobile(false)} />
-        <div className="sidebar-bottom">
-          <NavLink to="/settings" onClick={() => setMobile(false)}>
-            <Settings2 size={17} />
-            Settings
-          </NavLink>
-          <a
-            href="https://github.com/kubernetes/website/tree/main/content/en/docs"
-            target="_blank"
-            rel="noreferrer"
-          >
-            <CircleHelp size={17} />
-            Kubernetes docs
-            <ArrowUpRight size={13} />
-          </a>
-          <div className="sidebar-footer">
-            <span className="status-dot healthy" />
-            Timone v{VERSION}
-            <span>READ ONLY</span>
-          </div>
-        </div>
-      </aside>
+      <Sidebar
+        sidebar={mobileNavigation.sidebar}
+        narrow={mobileNavigation.narrow}
+        mobile={mobile}
+        closeMobile={closeMobile}
+        namespace={ns}
+        issues={issues}
+      />
       <div className="workspace" inert={mobileNavigation.narrow && mobile}>
         <header className="topbar">
           <button
@@ -349,50 +257,7 @@ function Shell() {
           {cluster.isError ? (
             <ErrorState error={cluster.error} />
           ) : (
-            <PageBoundary key={location.pathname}>
-              <Suspense fallback={<Loading />}>
-                <Routes>
-                  <Route path="/" element={<Overview namespace={actualNS} />} />
-                  <Route path="/resources" element={<Resources namespace={actualNS} />} />
-                  <Route
-                    path="/custom-resources"
-                    element={<CustomResources namespace={actualNS} />}
-                  />
-                  <Route
-                    path="/custom-resources/:definition/:namespace/:name"
-                    element={<ResourceDetail custom />}
-                  />
-                  <Route path="/applications" element={<Applications namespace={actualNS} />} />
-                  <Route path="/resources/:kind/:namespace/:name" element={<ResourceDetail />} />
-                  <Route path="/issues" element={<Issues namespace={actualNS} />} />
-                  <Route path="/issues/:id" element={<Issues namespace={actualNS} />} />
-                  <Route path="/events" element={<Timeline namespace={actualNS} />} />
-                  <Route path="/topology" element={<Topology namespace={actualNS} />} />
-                  <Route path="/metrics" element={<MetricsPage namespace={actualNS} />} />
-                  <Route path="/audit" element={<Audit namespace={actualNS} />} />
-                  <Route path="/integrations" element={<Integrations namespace={actualNS} />} />
-                  <Route
-                    path="/helm"
-                    element={<Integrations namespace={actualNS} filter="Helm" />}
-                  />
-                  <Route path="/helm/:namespace/:name" element={<HelmRelease />} />
-                  <Route
-                    path="/gitops"
-                    element={<Integrations namespace={actualNS} filter="GitOps" />}
-                  />
-                  <Route path="/settings" element={<Settings cluster={cluster.data} />} />
-                  <Route
-                    path="*"
-                    element={
-                      <Empty
-                        title="Page not found"
-                        description="Choose a view from the navigation to continue."
-                      />
-                    }
-                  />
-                </Routes>
-              </Suspense>
-            </PageBoundary>
+            <WorkspaceRoutes namespace={actualNS} cluster={cluster.data} />
           )}
         </main>
         <footer className="workspace-footer">
@@ -405,48 +270,12 @@ function Shell() {
           </span>
         </footer>
       </div>
-      <Dialog.Root open={searchOpen} onOpenChange={setSearchOpen}>
-        <Dialog.Portal>
-          <Dialog.Overlay className="search-backdrop" />
-          <Dialog.Content className="search-dialog" aria-describedby={undefined}>
-            <Dialog.Title className="sr-only">Global resource search</Dialog.Title>
-            <div className="search-input">
-              <Search size={20} />
-              <input
-                ref={input}
-                autoFocus
-                placeholder="Search resources across your cluster…"
-                aria-label="Search all resources"
-                maxLength={200}
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-              <button
-                className="icon-button"
-                aria-label="Close search"
-                onClick={() => setSearchOpen(false)}
-              >
-                <X size={18} />
-              </button>
-            </div>
-            <PageBoundary>
-              <Suspense fallback={<Loading />}>
-                <GlobalResults
-                  search={search}
-                  namespace={actualNS}
-                  kinds={cluster.data?.kinds ?? []}
-                  onSelect={(r) => {
-                    navigate(withNamespace(resourceURL(r), actualNS));
-                  }}
-                />
-              </Suspense>
-            </PageBoundary>
-            <div className="search-footer">
-              <Command size={12} /> Resources you have permission to read <kbd>esc to close</kbd>
-            </div>
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
+      <GlobalSearchDialog
+        namespace={actualNS}
+        cluster={cluster.data}
+        open={searchOpen}
+        onOpenChange={setSearchOpen}
+      />
     </div>
   );
 }
