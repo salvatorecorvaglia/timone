@@ -14,6 +14,7 @@ import {
 } from '../components/ui';
 import { EventCard } from './EventCard';
 import { useFilters } from '../lib/filters';
+import { pagination } from '../lib/pagination';
 
 function localTime(value: string) {
   const t = new Date(value);
@@ -35,7 +36,7 @@ export function Timeline({ namespace }: { namespace: string }) {
     retention: string;
   }>(`/api/v1/changes?${new URLSearchParams({ namespace, limit: '50' })}`);
   const { p, search, status, update } = useFilters();
-  const offset = Number(p.get('offset') ?? 0);
+  const { offset } = pagination(p);
   const cluster = useAPI<Cluster>('/api/v1/cluster');
   const kind = p.get('kind') ?? '';
   const resource = p.get('resource') ?? '';

@@ -512,3 +512,12 @@ export interface AccessReview {
   mode: string;
   observedAt: string;
 }
+
+export interface Workspace {
+  enabled: boolean;
+  context: string;
+  namespace: string;
+  revision: number;
+  contexts: string[];
+  message: string;
+}

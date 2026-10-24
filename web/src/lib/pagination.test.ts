@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { pageRange, pagination } from './pagination';
+import { pageRange, pagination, queryInteger } from './pagination';
 import { shouldInvalidate } from './updates';
 
 it('normalizes invalid page bounds and describes only returned rows', () => {
@@ -17,6 +17,10 @@ it('normalizes invalid page bounds and describes only returned rows', () => {
   });
   expect(pageRange(5000, 0, 16)).toBe('0');
   expect(pageRange(25, 3, 28)).toBe('26–28');
+  for (const value of ['-1', '1.5', 'Infinity', '0x10', '1e2', '5001', '']) {
+    expect(queryInteger(new URLSearchParams({ goffset: value }), 'goffset', 0, 0, 5000)).toBe(0);
+  }
+  expect(queryInteger(new URLSearchParams('goffset=5000'), 'goffset', 0, 0, 5000)).toBe(5000);
 });
 it('refreshes cross-namespace delivery associations without widening workload invalidation', () => {
   for (const kind of ['Application', 'Kustomization', 'HelmRelease']) {

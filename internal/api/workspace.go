@@ -135,7 +135,7 @@ func (rt *Runtime) contexts() ([]string, error) {
 }
 func (a *Server) workspaceInfo(w http.ResponseWriter, r *http.Request) {
 	if a.workspace == nil {
-		write(w, 200, map[string]any{"enabled": false, "context": a.service.Provider.Name(), "namespace": a.service.Provider.Namespace(), "revision": 1, "contexts": []string{}, "message": "Runtime switching requires local loopback operator mode."})
+		write(w, 200, workspaceResponse{Enabled: false, Context: a.service.Provider.Name(), Namespace: a.service.Provider.Namespace(), Revision: 1, Contexts: []string{}, Message: "Runtime switching requires local loopback operator mode."})
 		return
 	}
 	rt := a.workspace
@@ -156,7 +156,7 @@ func (a *Server) workspaceInfo(w http.ResponseWriter, r *http.Request) {
 	if !rt.enabled() {
 		message = "Runtime switching requires local loopback operator mode. Demo and shared deployments keep a fixed workspace."
 	}
-	write(w, 200, map[string]any{"enabled": rt.enabled(), "context": state.service.Provider.Name(), "namespace": state.service.Provider.Namespace(), "revision": state.revision, "contexts": names, "message": message})
+	write(w, 200, workspaceResponse{Enabled: rt.enabled(), Context: state.service.Provider.Name(), Namespace: state.service.Provider.Namespace(), Revision: state.revision, Contexts: names, Message: message})
 }
 func (a *Server) switchWorkspace(w http.ResponseWriter, r *http.Request) {
 	rt := a.workspace
@@ -164,12 +164,7 @@ func (a *Server) switchWorkspace(w http.ResponseWriter, r *http.Request) {
 		fail(w, 403, "Context switching requires local loopback operator mode")
 		return
 	}
-	var input struct {
-		Context   string  `json:"context"`
-		Namespace *string `json:"namespace"`
-		Revision  uint64  `json:"revision"`
-		Confirm   bool    `json:"confirm"`
-	}
+	var input workspaceSwitchRequest
 	decoder := json.NewDecoder(io.LimitReader(r.Body, 4097))
 	decoder.DisallowUnknownFields()
 	if decoder.Decode(&input) != nil || decoder.Decode(&struct{}{}) != io.EOF || !input.Confirm || input.Context == "" || input.Namespace == nil {

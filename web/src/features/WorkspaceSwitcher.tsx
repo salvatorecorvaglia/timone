@@ -2,14 +2,8 @@ import { useState } from 'react';
 import { request, useAPI } from '../lib/api';
 import { ErrorState, Loading } from '../components/ui';
 
-type Workspace = {
-  enabled: boolean;
-  context: string;
-  namespace: string;
-  revision: number;
-  contexts: string[];
-  message: string;
-};
+import type { Workspace } from '../types';
+
 export function WorkspaceSwitcher({ close }: { close: () => void }) {
   const data = useAPI<Workspace>('/api/v1/workspace');
   const [context, setContext] = useState<string | null>(null);

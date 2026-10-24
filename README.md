@@ -104,6 +104,8 @@ Connect a compatible MCP client to `http://127.0.0.1:8080/mcp` using Streamable 
 
 The backend also serves its HTTP API under `/api/v1`, live updates at `/api/v1/stream`, and unauthenticated health probes at `/healthz` and `/readyz`.
 
+See [workspace and investigation contracts](docs/contracts.md) for namespace visibility, browser workspace replacement, and the REST/MCP capability matrix.
+
 ## Desktop development
 
 The Electron application launches a bundled Go backend. After building the frontend as above, prepare a backend for your host platform and start the app:

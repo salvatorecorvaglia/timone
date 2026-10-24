@@ -2,6 +2,7 @@ import { ScopedLink as Link } from '../components/navigation';
 import { useSearchParams } from 'react-router-dom';
 import { ArrowRight, ChevronLeft, ChevronRight, RefreshCw, Search } from 'lucide-react';
 import { ago, useAPI } from '../lib/api';
+import { pagination } from '../lib/pagination';
 import type { CustomCatalog, CustomPage, CustomType } from '../types';
 import { Empty, ErrorState, Loading, PageTitle, Panel, Status, Warnings } from '../components/ui';
 
@@ -90,8 +91,7 @@ function CustomCollection({ type, namespace }: { type: CustomType; namespace: st
   const version = params.get('version') || type.preferredVersion;
   const search = params.get('search') ?? '';
   const status = params.get('status') ?? '';
-  const limit = Number(params.get('limit') ?? 25);
-  const offset = Number(params.get('offset') ?? 0);
+  const { limit, offset } = pagination(params);
   const sort = params.get('sort') ?? 'name';
   const q = new URLSearchParams({
     namespace,

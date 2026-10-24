@@ -173,6 +173,33 @@ func TestNamespaceSnapshotPreservesClusterScopedDataAndAuditScope(t *testing.T) 
 		}
 	}
 }
+
+// A namespace ceiling restricts namespaced resources, not cluster-scoped inventory.
+// Snapshot/search filter Namespace objects for context; the generic list remains complete.
+func TestNamespaceInventoryVisibilityContract(t *testing.T) {
+	s := New(scoped{provider.NewDemo()})
+	page, err := s.List(context.Background(), Query{Kind: "Namespace"})
+	if err != nil || page.Total != 4 {
+		t.Fatalf("cluster namespace inventory: total=%d error=%v", page.Total, err)
+	}
+	nodes, err := s.List(context.Background(), Query{Kind: "Node"})
+	if err != nil || nodes.Total != 3 {
+		t.Fatalf("cluster node inventory: total=%d error=%v", nodes.Total, err)
+	}
+	snap, err := s.Snapshot(context.Background(), "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, resource := range snap.Resources {
+		if resource.Kind == "Namespace" && resource.Name != "production" {
+			t.Fatal("snapshot namespace escaped selected context")
+		}
+	}
+	search, err := s.Search(context.Background(), SearchQuery{Search: "staging", Kind: "Namespace"})
+	if err != nil || search.Total != 0 {
+		t.Fatalf("contextual namespace search: total=%d error=%v", search.Total, err)
+	}
+}
 func TestRBACNamesSupportSystemRolesWithoutPathEscape(t *testing.T) {
 	if e := ValidateResource("ClusterRole", "", "system:controller:job-controller"); e != nil {
 		t.Fatal(e)
