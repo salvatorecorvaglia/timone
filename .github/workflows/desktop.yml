@@ -8,6 +8,12 @@ on:
     paths: ['desktop/**', 'cmd/**', 'internal/**', 'web/**', 'go.mod', 'go.sum', 'tests/**', 'scripts/**', 'packaging/**', 'README.md', 'LICENSE', 'CHANGELOG.md', '.github/workflows/desktop.yml']
   workflow_dispatch:
   workflow_call:
+    inputs:
+      package-only:
+        description: Skip source-level tests and only package/test the installers
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -36,16 +42,16 @@ jobs:
     env:
       CI: true
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           persist-credentials: false
-      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16
         with:
           go-version-file: go.mod
-      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320
         with:
           package_json_file: desktop/package.json
-      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
         with:
           node-version: '24'
           cache: pnpm
@@ -72,7 +78,10 @@ jobs:
           if [[ "$RUNNER_OS" == Windows ]]; then binary=timone.exe; fi
           go build -trimpath -ldflags='-s -w' -o "desktop/resources/$binary" ./cmd/timone
           pnpm --dir desktop run icons
-          pnpm --dir desktop test
+
+      - name: Test desktop sources
+        if: ${{ inputs.package-only != true }}
+        run: pnpm --dir desktop test
 
       - name: Install Linux desktop test dependencies
         if: runner.os == 'Linux'
@@ -83,6 +92,7 @@ jobs:
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
 
       - name: Test desktop application
+        if: ${{ inputs.package-only != true }}
         run: |
           if [[ "$RUNNER_OS" == Linux ]]; then
             xvfb-run -a pnpm --dir desktop run test:app
@@ -151,7 +161,7 @@ jobs:
           if command -v kind >/dev/null; then kind delete cluster --name timone-desktop-acceptance; fi
 
       - name: Upload installers
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
           name: desktop-installers-${{ runner.os }}-${{ matrix.arch }}
           compression-level: 0
@@ -166,7 +176,7 @@ jobs:
 
       - name: Upload desktop test screenshot
         if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
           name: desktop-report-${{ runner.os }}-${{ matrix.arch }}
           path: desktop/test-results/

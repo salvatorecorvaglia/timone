@@ -20,7 +20,7 @@ jobs:
     env:
       RELEASE_TAG: ${{ github.ref_name }}
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           persist-credentials: false
       - name: Validate version tag
@@ -33,7 +33,6 @@ jobs:
 
       - name: Verify embedded application version matches release tag
         run: |
-          python3 scripts/version.py --check
           python3 - <<'PYTHON'
           import json
           import os
@@ -66,22 +65,22 @@ jobs:
       RELEASE_TAG: ${{ github.ref_name }}
     steps:
       - name: Check out source
-        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           persist-credentials: false
 
       - name: Set up Go
-        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16
         with:
           go-version-file: go.mod
 
       - name: Set up pnpm
-        uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5
+        uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320
         with:
           package_json_file: web/package.json
 
       - name: Set up Node.js
-        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
         with:
           node-version: '24'
           cache: pnpm
@@ -129,7 +128,7 @@ jobs:
           (cd release && sha256sum timone.rb >> checksums.txt)
 
       - name: Upload release archives
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
           name: release-assets
           compression-level: 0
@@ -141,6 +140,8 @@ jobs:
     name: Desktop packages
     needs: quality
     uses: ./.github/workflows/desktop.yml
+    with:
+      package-only: true
 
   publish:
     name: Publish GitHub release
@@ -151,7 +152,7 @@ jobs:
       contents: write
     steps:
       - name: Check out source
-        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           persist-credentials: false
 
@@ -177,7 +178,7 @@ jobs:
           PYTHON
 
       - name: Download release archives
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
           name: release-assets
           path: release
@@ -187,7 +188,7 @@ jobs:
         run: sha256sum --check checksums.txt
 
       - name: Download desktop installers
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
           pattern: desktop-installers-*
           merge-multiple: true
@@ -243,10 +244,10 @@ jobs:
       group: homebrew-tap
       cancel-in-progress: false
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           persist-credentials: false
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
           name: release-assets
           path: release
