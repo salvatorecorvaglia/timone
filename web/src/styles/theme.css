@@ -35,6 +35,46 @@
 :root[data-theme="light"] .mode-banner span {
   color: #70532c;
 }
+:root[data-theme="light"] .update-banner {
+  background: #eef4ef;
+  border-bottom-color: #d5e2d9;
+  color: #4d6b5d;
+}
+:root[data-theme="light"] .update-banner.available {
+  background: #e9f3e5;
+  border-bottom-color: #cfe3c7;
+}
+:root[data-theme="light"] .update-banner.error {
+  background: #fbf0ef;
+  border-bottom-color: #eccfcc;
+  color: #8a4a43;
+}
+:root[data-theme="light"] .update-banner-copy strong {
+  color: #1d3a2c;
+}
+:root[data-theme="light"] .update-banner-copy span {
+  color: #5d7166;
+}
+:root[data-theme="light"] .update-banner-copy code {
+  background: #fff;
+  border-color: #d5e2d9;
+  color: #315345;
+}
+:root[data-theme="light"] .update-banner-close:hover {
+  background: #0000000f;
+  color: var(--text);
+}
+:root[data-theme="light"] .update-banner progress,
+:root[data-theme="light"] .update-progress progress,
+:root[data-theme="light"] .update-banner progress::-webkit-progress-bar,
+:root[data-theme="light"] .update-progress progress::-webkit-progress-bar {
+  background: #d9e4dc;
+}
+:root[data-theme="light"] .update-error {
+  background: #fbf0ef;
+  border-color: #eccfcc;
+  color: #8a4a43;
+}
 :root[data-theme="light"] .button.primary,
 :root[data-theme="light"] .skip-link {
   color: #fff;

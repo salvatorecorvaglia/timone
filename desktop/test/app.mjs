@@ -10,7 +10,7 @@ const temporary = await fs.mkdtemp(path.join(os.tmpdir(), 'timone-desktop-test-'
 const executablePath = process.env.TIMONE_TEST_EXECUTABLE;
 const app = await electron.launch({
   ...(executablePath ? { executablePath: path.resolve(executablePath), args: [] } : { args: [path.join(root, 'main.cjs')] }),
-  env: { ...process.env, KUBECONFIG: path.join(temporary, 'missing-kubeconfig') },
+  env: { ...process.env, KUBECONFIG: path.join(temporary, 'missing-kubeconfig'), TIMONE_DISABLE_UPDATE_CHECK: '1' },
   timeout: 45000,
 });
 try {
@@ -39,8 +39,17 @@ try {
     assert.match(result.error, /Demo mode is available only in development/);
     await expect(demoButton).toBeHidden();
     await expect(page.getByRole('button', { name: 'Open cluster' })).toBeEnabled();
+    const updateBridge = await page.evaluate(async () => {
+      const bridge = window.timoneDesktop.update;
+      const state = await bridge.state();
+      return { keys: Object.keys(bridge).sort(), state };
+    });
+    assert.deepEqual(updateBridge.keys, ['check', 'install', 'onEvent', 'openReleasePage', 'state']);
+    assert.equal(updateBridge.state.ok, true);
+    assert.equal(updateBridge.state.value.status, 'idle');
+    assert.ok(['manual', 'self', 'squirrel'].includes(updateBridge.state.value.mode));
     await page.screenshot({ path: path.join(root, 'test-results/desktop.png') });
-    console.log('Packaged desktop integration passed: kubeconfig consent, startup failure and demo rejection.');
+    console.log('Packaged desktop integration passed: kubeconfig consent, startup failure, demo rejection and update bridge.');
   } else {
     await page.getByRole('button', { name: 'Explore the demo' }).click();
     await page.waitForURL(/^http:\/\/127\.0\.0\.1:\d+\//, { timeout: 30000 });
@@ -48,6 +57,24 @@ try {
     const origin = new URL(page.url()).origin;
     assert.equal(new URL(page.url()).search, '');
     assert.deepEqual(await page.evaluate(() => ({ node: typeof window.require, setup: typeof window.timoneSetup, cookies: document.cookie })), { node: 'undefined', setup: 'undefined', cookies: '' });
+    const updateBridge = await page.evaluate(async () => {
+      const bridge = window.timoneDesktop.update;
+      const state = await bridge.state();
+      return { keys: Object.keys(bridge).sort(), state };
+    });
+    assert.deepEqual(updateBridge.keys, ['check', 'install', 'onEvent', 'openReleasePage', 'state']);
+    assert.equal(updateBridge.state.ok, true);
+    assert.equal(updateBridge.state.value.status, 'idle');
+    assert.equal(updateBridge.state.value.reason, 'development');
+    assert.equal(
+      await page.evaluate(() => {
+        const unsubscribe = window.timoneDesktop.update.onEvent(() => {});
+        if (typeof unsubscribe !== 'function') return 'no-unsubscribe';
+        unsubscribe();
+        return 'ok';
+      }),
+      'ok',
+    );
     const prefs = await app.evaluate(({ BrowserWindow }) => {
       const p = BrowserWindow.getAllWindows()[0].webContents.getLastWebPreferences();
       return { sandbox: p.sandbox, contextIsolation: p.contextIsolation, nodeIntegration: p.nodeIntegration };

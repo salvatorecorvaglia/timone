@@ -14,6 +14,7 @@ import {
 import { useCallback, useEffect, useState } from 'react';
 import { useLocation, useSearchParams } from 'react-router-dom';
 import { ScopedLink as Link } from '../components/navigation';
+import { UpdateBanner } from '../components/UpdateBanner';
 import { ErrorState } from '../components/ui';
 import { WorkspaceSwitcher } from '../features/WorkspaceSwitcher';
 import { useAPI } from '../lib/api';
@@ -214,6 +215,7 @@ function Shell() {
             <ArrowUpRight size={13} />
           </Link>
         </section>
+        <UpdateBanner />
         <nav aria-label="Workspace context" className="contextbar">
           <div>
             <span>Workspace</span>

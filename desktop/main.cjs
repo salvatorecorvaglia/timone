@@ -5,6 +5,13 @@ const { randomUUID } = require('node:crypto');
 const { Backend } = require('./backend.cjs');
 const { readSettings, saveSettings, validateSettings } = require('./settings.cjs');
 const { isExternalURL, sameOrigin } = require('./security.cjs');
+const {
+  initAutoUpdater,
+  getUpdateState,
+  checkForUpdate,
+  installUpdate,
+  openReleasePage,
+} = require('./updater.cjs');
 
 const welcomePath = path.join(__dirname, 'welcome.html');
 const welcomeURL = pathToFileURL(welcomePath).href;
@@ -148,12 +155,21 @@ async function start() {
   handle('desktop:connect', true, connect);
   handle('desktop:configure', false, configure);
   handle('desktop:reconnect', false, async () => { await authenticate(); return true; });
+  handle('desktop:update-state', false, () => getUpdateState());
+  handle('desktop:update-check', false, () => checkForUpdate({ manual: true }));
+  handle('desktop:update-install', false, () => installUpdate());
+  handle('desktop:update-open-release', false, () => openReleasePage());
   Menu.setApplicationMenu(Menu.buildFromTemplate([
     ...(process.platform === 'darwin' ? [{ role: 'appMenu' }] : []),
     { label: 'Connection', submenu: [{ label: 'Change connection…', click: () => { void configure().catch(() => {}); } }, { type: 'separator' }, { role: 'quit' }] },
     { role: 'editMenu' }, { role: 'viewMenu' }, { role: 'windowMenu' },
     { role: 'help', submenu: [{ label: 'Timone releases', click: () => { void shell.openExternal('https://github.com/salvatorecorvaglia/timone/releases'); } }] },
   ]));
+  initAutoUpdater({
+    onState: (state) => {
+      if (window && !window.isDestroyed()) window.webContents.send('desktop:update-event', state);
+    },
+  });
   await window.loadFile(welcomePath);
   window.show();
 }

@@ -27,3 +27,49 @@ it('preserves actionable bridge failures without claiming reconnection succeeded
   await expect(configureDesktop()).rejects.toThrow('Workspace is closing');
   await expect(reconnectDesktop()).rejects.toThrow('Backend unavailable');
 });
+
+it('unwraps update state and actions from the desktop bridge', async () => {
+  const state = {
+    status: 'idle' as const,
+    currentVersion: '1.1.0',
+    version: null,
+    percent: 0,
+    bytesPerSecond: null,
+    error: null,
+    mode: 'squirrel' as const,
+    canCheck: true,
+    canInstall: true,
+    reason: null,
+    packageManager: null,
+    command: null,
+    checkedAt: null,
+  };
+  window.timoneDesktop = {
+    configure: vi.fn(),
+    reconnect: vi.fn(),
+    update: {
+      state: vi.fn().mockResolvedValue({ ok: true, value: state }),
+      check: vi.fn().mockResolvedValue({ ok: true, value: state }),
+      install: vi.fn().mockResolvedValue({ ok: true, value: true }),
+      openReleasePage: vi.fn().mockResolvedValue({ ok: true, value: true }),
+      onEvent: vi.fn(),
+    },
+  };
+  const { getUpdateState, checkForUpdate, installUpdate, openReleasePage } = await import(
+    './desktop'
+  );
+  await expect(getUpdateState()).resolves.toEqual(state);
+  await expect(checkForUpdate()).resolves.toEqual(state);
+  await expect(installUpdate()).resolves.toBe(true);
+  await expect(openReleasePage()).resolves.toBe(true);
+});
+
+it('fails update actions clearly without the desktop bridge', async () => {
+  const { getUpdateState, checkForUpdate, installUpdate, openReleasePage } = await import(
+    './desktop'
+  );
+  await expect(getUpdateState()).rejects.toThrow('desktop app');
+  await expect(checkForUpdate()).rejects.toThrow('desktop app');
+  await expect(installUpdate()).rejects.toThrow('Could not start the update');
+  await expect(openReleasePage()).rejects.toThrow('Could not open the releases page');
+});

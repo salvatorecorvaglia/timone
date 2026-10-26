@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Desktop auto-updates from GitHub release feeds with SHA-512 verification, including in-place updates for unsigned macOS builds and package-manager guidance for Homebrew, Scoop, and deb installs.
+
 ## [1.1.0] - 2026-10-24
 
 ### Added

@@ -194,6 +194,14 @@ jobs:
           merge-multiple: true
           path: desktop-release
 
+      - name: Merge and verify desktop update feeds
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          python3 -m pip install --quiet --disable-pip-version-check --target "$RUNNER_TEMP/desktop-update-pyyaml" pyyaml
+          PYTHONPATH="$RUNNER_TEMP/desktop-update-pyyaml" python3 scripts/desktop_update_manifests.py --directory desktop-release --version "$RELEASE_TAG"
+          cp desktop-release/latest*.yml release/
+
       - name: Add desktop installers and checksums
         run: |
           python3 - <<'PYTHON'

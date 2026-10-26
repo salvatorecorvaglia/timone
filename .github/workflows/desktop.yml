@@ -125,6 +125,29 @@ jobs:
             sleep 10
           done
 
+      - name: Prepare update feed
+        working-directory: desktop
+        run: |
+          # electron-builder writes one latest-mac.yml per architecture. Rename
+          # it here so the two matrix jobs do not overwrite each other when
+          # their artifacts are merged in the release job.
+          case "$RUNNER_OS" in
+            macOS)
+              test -f dist/latest-mac.yml
+              mv dist/latest-mac.yml "dist/latest-mac-${{ matrix.arch }}.yml"
+              ;;
+            Linux)
+              if [[ "${{ matrix.arch }}" == arm64 ]]; then
+                test -f dist/latest-linux-arm64.yml
+              else
+                test -f dist/latest-linux.yml
+              fi
+              ;;
+            Windows)
+              test -f dist/latest.yml
+              ;;
+          esac
+
       - name: Test packaged application
         working-directory: desktop
         env:
@@ -171,6 +194,7 @@ jobs:
             desktop/dist/*.exe
             desktop/dist/*.deb
             desktop/dist/*.AppImage
+            desktop/dist/latest*.yml
           if-no-files-found: error
           retention-days: 14
 

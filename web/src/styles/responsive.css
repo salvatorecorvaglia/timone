@@ -1225,4 +1225,17 @@
     z-index: 1;
     background: var(--panel);
   }
+  .update-banner {
+    flex-wrap: wrap;
+    padding: 10px 16px;
+  }
+  .update-banner-copy {
+    flex: 1 1 220px;
+  }
+  .update-banner-actions {
+    margin-left: 0;
+  }
+  .update-banner-close {
+    margin-left: auto;
+  }
 }

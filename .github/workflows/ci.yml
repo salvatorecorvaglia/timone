@@ -50,6 +50,10 @@ jobs:
         run: python3 -m unittest discover -s tests/homebrew -v
       - name: Test desktop manifest generation
         run: python3 -m unittest discover -s tests/channels -v
+      - name: Test desktop update feeds
+        run: |
+          python3 -m pip install --quiet --disable-pip-version-check --target "$RUNNER_TEMP/desktop-update-pyyaml" pyyaml
+          PYTHONPATH="$RUNNER_TEMP/desktop-update-pyyaml" python3 -m unittest discover -s tests/release -v
 
   frontend:
     name: Frontend checks

@@ -5,12 +5,17 @@ module.exports = {
   npmRebuild: false,
   forceCodeSigning: process.env.TIMONE_REQUIRE_SIGNING === 'true',
   directories: { output: 'dist', buildResources: 'assets' },
-  files: ['main.cjs', 'backend.cjs', 'settings.cjs', 'security.cjs', 'preload.cjs', 'welcome.html', 'welcome.js', 'welcome.css', 'palette.css', 'assets/icon.svg', 'assets/icon.png', 'package.json'],
+  files: ['main.cjs', 'updater.cjs', 'mac-self-update.cjs', 'backend.cjs', 'settings.cjs', 'security.cjs', 'preload.cjs', 'welcome.html', 'welcome.js', 'welcome.css', 'palette.css', 'assets/icon.svg', 'assets/icon.png', 'package.json'],
   extraResources: [{ from: 'resources', to: '.', filter: ['timone', 'timone.exe'] }],
   artifactName: 'timone-desktop_${version}_${os}_${arch}.${ext}',
-  // Distribution is explicit in GitHub Actions. No background updater or
-  // third-party publishing service runs from the installed application.
-  publish: null,
+  // The installed app reads its feed from GitHub, but publishing stays in the
+  // release workflow: electron-builder writes latest*.yml here (even with
+  // --publish never) and the workflow uploads them with the installers.
+  publish: {
+    provider: 'generic',
+    url: 'https://github.com/salvatorecorvaglia/timone/releases/latest/download',
+  },
+  generateUpdatesFilesForAllChannels: false,
   mac: {
     category: 'public.app-category.developer-tools',
     icon: 'assets/icon.png',

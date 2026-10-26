@@ -25,5 +25,8 @@
   },
   "engines": {
     "node": ">=24.0.0"
+  },
+  "dependencies": {
+    "electron-updater": "6.8.11"
   }
 }

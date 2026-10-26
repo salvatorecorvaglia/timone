@@ -20,7 +20,7 @@ const temporary = await fs.mkdtemp(path.join(os.tmpdir(), 'timone-desktop-cluste
 const executablePath = process.env.TIMONE_TEST_EXECUTABLE;
 const app = await electron.launch({
   ...(executablePath ? { executablePath: path.resolve(executablePath), args: [] } : { args: [path.join(root, 'main.cjs')] }),
-  env: { ...process.env, KUBECONFIG: kubeconfig }, timeout: 45000,
+  env: { ...process.env, KUBECONFIG: kubeconfig, TIMONE_DISABLE_UPDATE_CHECK: '1' }, timeout: 45000,
 });
 let page;
 try {

@@ -15,6 +15,7 @@ import {
   Warnings,
 } from '../components/ui';
 import { desktop, configureDesktop } from '../lib/desktop';
+import { ApplicationUpdates } from './ApplicationUpdates';
 
 export function Settings({ cluster }: { cluster?: Cluster }) {
   const session = useAPI<AccessSession>('/api/v1/session');
@@ -205,6 +206,7 @@ export function Settings({ cluster }: { cluster?: Cluster }) {
             </button>
           </div>
         </Panel>
+        {desktop?.update && <ApplicationUpdates />}
         {connection.data && (
           <Panel
             title="Kubernetes observation"
