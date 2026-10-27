@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Update `golang.org/x/net` to `v0.62.0`.
+- Always use ad-hoc macOS desktop signing and disable notarization in the desktop builder.
+- Refresh the application logo, README and contribution guide.
+
 ## [1.2.0] - 2026-10-27
 
 ### Added
