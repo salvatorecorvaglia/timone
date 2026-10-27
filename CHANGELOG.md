@@ -7,9 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-10-27
+
 ### Added
 
 - Desktop auto-updates from GitHub release feeds with SHA-512 verification, including in-place updates for unsigned macOS builds and package-manager guidance for Homebrew, Scoop, and deb installs.
+- Application update controls in desktop Settings and an app-wide update banner, with manual checks, download progress, restart-to-install actions, and error recovery.
+- Desktop update manifests generated and validated during packaging and included in GitHub releases.
+
+### Changed
+
+- Reuse successful release quality checks when packaging desktop installers, while retaining installer tests.
+- Update Biome to 2.6.3.
 
 ## [1.1.0] - 2026-10-24
 
