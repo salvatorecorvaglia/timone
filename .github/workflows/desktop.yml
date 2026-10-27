@@ -88,7 +88,6 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install --no-install-recommends -y xvfb libgtk-3-0t64 libnss3 libasound2t64 libgbm1 libxss1 libxtst6
-          # Permit Chromium's sandbox in the disposable hosted test VM.
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
 
       - name: Test desktop application
@@ -105,9 +104,6 @@ jobs:
         env:
           DESKTOP_ARCH: ${{ matrix.arch }}
         run: |
-          # dmgbuild can exhaust its detach retries while macOS still holds the
-          # temporary volume open. Retry only that transient failure, with a
-          # fresh log each time; signing/configuration errors must fail at once.
           log="$RUNNER_TEMP/timone-desktop-package.log"
           for attempt in 1 2 3; do
             if pnpm run dist --"$DESKTOP_ARCH" > "$log" 2>&1; then
@@ -128,9 +124,6 @@ jobs:
       - name: Prepare update feed
         working-directory: desktop
         run: |
-          # electron-builder writes one latest-mac.yml per architecture. Rename
-          # it here so the two matrix jobs do not overwrite each other when
-          # their artifacts are merged in the release job.
           case "$RUNNER_OS" in
             macOS)
               test -f dist/latest-mac.yml

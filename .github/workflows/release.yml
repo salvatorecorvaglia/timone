@@ -239,7 +239,6 @@ jobs:
           set -euo pipefail
           gh release create "$RELEASE_TAG" release/* \
             --draft --verify-tag --title "Timone $RELEASE_TAG" --notes-file "$RUNNER_TEMP/release-notes.md"
-          # Make the release public only after every asset has been uploaded.
           gh release edit "$RELEASE_TAG" --draft=false
 
   homebrew:
