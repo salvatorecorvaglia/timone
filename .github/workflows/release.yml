@@ -54,98 +54,12 @@ jobs:
     name: Release checks
     needs: validate
     uses: ./.github/workflows/ci.yml
-
-  build:
-    name: Build release archives
-    needs: quality
-    runs-on: ubuntu-24.04
-    timeout-minutes: 30
-    env:
-      CI: true
-      RELEASE_TAG: ${{ github.ref_name }}
-    steps:
-      - name: Check out source
-        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
-        with:
-          persist-credentials: false
-
-      - name: Set up Go
-        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16
-        with:
-          go-version-file: go.mod
-
-      - name: Set up pnpm
-        uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320
-        with:
-          package_json_file: web/package.json
-
-      - name: Set up Node.js
-        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
-        with:
-          node-version: '24'
-          cache: pnpm
-          cache-dependency-path: web/pnpm-lock.yaml
-
-      - name: Install dependencies
-        run: |
-          go mod download
-          go mod verify
-          pnpm --dir web install --frozen-lockfile
-
-      - name: Build frontend
-        run: pnpm --dir web run build
-
-      - name: Package release binaries
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p release
-          for os in linux darwin windows; do
-            for arch in amd64 arm64; do
-              name="timone_${RELEASE_TAG#v}_${os}_${arch}"
-              staging=$(mktemp -d)
-              binary=timone
-              if [[ "$os" == windows ]]; then
-                binary=timone.exe
-              fi
-              CGO_ENABLED=0 GOOS="$os" GOARCH="$arch" go build \
-                -trimpath -ldflags='-s -w' -o "$staging/$binary" ./cmd/timone
-              cp README.md LICENSE CHANGELOG.md "$staging/"
-              if [[ "$os" == windows ]]; then
-                (cd "$staging" && zip -q "$GITHUB_WORKSPACE/release/$name.zip" "$binary" README.md LICENSE CHANGELOG.md)
-              else
-                tar -czf "release/$name.tar.gz" -C "$staging" "$binary" README.md LICENSE CHANGELOG.md
-              fi
-            done
-          done
-          (cd release && sha256sum *.tar.gz *.zip > checksums.txt)
-
-      - name: Generate stable Homebrew formula
-        if: ${{ !contains(github.ref_name, '-') && !contains(github.ref_name, '+') }}
-        run: |
-          python3 scripts/homebrew.py --version "$RELEASE_TAG" \
-            --checksums release/checksums.txt --output release/timone.rb
-          (cd release && sha256sum timone.rb >> checksums.txt)
-
-      - name: Upload release archives
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
-        with:
-          name: release-assets
-          compression-level: 0
-          path: release/*
-          if-no-files-found: error
-          retention-days: 7
-
-  desktop:
-    name: Desktop packages
-    needs: quality
-    uses: ./.github/workflows/desktop.yml
     with:
-      package-only: true
+      release: true
 
   publish:
     name: Publish GitHub release
-    needs: [build, desktop]
+    needs: quality
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:

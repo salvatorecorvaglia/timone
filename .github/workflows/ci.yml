@@ -7,6 +7,10 @@ on:
   pull_request:
   workflow_dispatch:
   workflow_call:
+    inputs:
+      release:
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -48,6 +52,8 @@ jobs:
           persist-credentials: false
       - name: Test Homebrew formula generation and publication
         run: python3 -m unittest discover -s tests/homebrew -v
+      - name: Test native backend promotion
+        run: python3 -m unittest discover -s tests/release-build -v
       - name: Test desktop manifest generation
         run: python3 -m unittest discover -s tests/channels -v
       - name: Test desktop update feeds
@@ -79,14 +85,16 @@ jobs:
       - name: Install dependencies
         run: pnpm --dir web install --frozen-lockfile
 
-      - name: Typecheck frontend and generate fixtures
-        run: pnpm --dir web run typecheck
+      - name: Generate Go fixtures once
+        run: pnpm --dir web run test:fixtures
+      - name: Typecheck frontend
+        run: pnpm --dir web exec tsc --noEmit
       - name: Lint frontend
         run: pnpm --dir web run lint
       - name: Check frontend formatting
         run: pnpm --dir web run format:check
       - name: Test frontend with coverage
-        run: pnpm --dir web run test:coverage
+        run: pnpm --dir web exec vitest run --coverage
 
       - name: Upload frontend coverage
         if: ${{ !cancelled() }}
@@ -97,8 +105,30 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+      - name: Build and verify repeatable frontend assets
+        run: node tests/release/frontend.mjs
+      - name: Share verified embedded frontend
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: embedded-frontend
+          path: web/dist/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Build browser test application
+        run: CGO_ENABLED=0 go build -trimpath -o bin/timone ./cmd/timone
+      - name: Share browser test application
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: browser-application
+          path: bin/timone
+          if-no-files-found: error
+          retention-days: 7
+
   integration:
-    name: Go and browser tests
+    name: Go tests and performance
+    needs: frontend
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
@@ -114,23 +144,10 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: Set up pnpm
-        uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320
-        with:
-          package_json_file: web/package.json
-
-      - name: Set up Node.js
-        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
-        with:
-          node-version: '24'
-          cache: pnpm
-          cache-dependency-path: web/pnpm-lock.yaml
-
       - name: Install dependencies
         run: |
           go mod download
           go mod verify
-          pnpm --dir web install --frozen-lockfile
 
       - name: Check Go formatting
         run: |
@@ -140,8 +157,11 @@ jobs:
             exit 1
           fi
 
-      - name: Build frontend
-        run: node tests/release/frontend.mjs
+      - name: Download verified embedded frontend
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: embedded-frontend
+          path: web/dist
 
       - name: Test Go packages
         run: go test -race -count=1 -timeout=10m -coverprofile=coverage.out ./...
@@ -159,32 +179,28 @@ jobs:
       - name: Vet Go packages
         run: go vet ./...
 
-      - name: Build application
-        run: CGO_ENABLED=0 go build -trimpath -o bin/timone ./cmd/timone
+      - name: Download browser test application
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: browser-application
+          path: bin
+      - run: chmod +x bin/timone
 
       - name: Smoke test application
         run: go run ./tests/smoke -binary ./bin/timone
 
-      - name: Install Chromium
-        run: pnpm --dir web exec playwright install --with-deps chromium
-
-      - name: Run browser and accessibility tests
-        run: pnpm --dir web run test:browser
-
-      - name: Upload coverage and browser reports
+      - name: Retain Go coverage
         if: ${{ always() }}
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
-          name: test-reports
-          path: |
-            coverage.out
-            playwright-report/
-            test-results/
+          name: go-coverage
+          path: coverage.out
           if-no-files-found: ignore
           retention-days: 14
 
   security:
     name: Dependency security
+    needs: frontend
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -202,8 +218,11 @@ jobs:
           node-version: '24'
       - name: Install frontend dependencies without lifecycle scripts
         run: pnpm --dir web install --frozen-lockfile --ignore-scripts
-      - name: Build embedded frontend
-        run: pnpm --dir web run build
+      - name: Download verified embedded frontend
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: embedded-frontend
+          path: web/dist
       - name: Audit frontend dependencies
         run: pnpm --dir web audit --audit-level=low
       - name: Review desktop advisories and exception boundaries
@@ -216,7 +235,7 @@ jobs:
   checks:
     name: Build and test
     if: ${{ always() }}
-    needs: [workflows, frontend, integration, packaging, security]
+    needs: [workflows, frontend, integration, packaging, security, archives, browser, desktop]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -226,13 +245,18 @@ jobs:
           FRONTEND_RESULT: ${{ needs.frontend.result }}
           INTEGRATION_RESULT: ${{ needs.integration.result }}
           PACKAGING_RESULT: ${{ needs.packaging.result }}
+          ARCHIVES_RESULT: ${{ needs.archives.result }}
+          DESKTOP_RESULT: ${{ needs.desktop.result }}
+          DESKTOP_REQUIRED: ${{ inputs.release || false }}
+          BROWSER_RESULT: ${{ needs.browser.result }}
           SECURITY_RESULT: ${{ needs.security.result }}
         run: |
           printf '| Check | Result |\n| --- | --- |\n' >> "$GITHUB_STEP_SUMMARY"
           failed=0
-          for check in WORKFLOWS FRONTEND INTEGRATION PACKAGING SECURITY; do
+          for check in WORKFLOWS FRONTEND INTEGRATION PACKAGING SECURITY ARCHIVES BROWSER DESKTOP; do
             variable="${check}_RESULT"
             result="${!variable}"
+            if [[ "$check" == DESKTOP && "$DESKTOP_REQUIRED" != true && "$result" == skipped ]]; then result=success; fi
             printf '| %s | %s |\n' "$check" "$result" >> "$GITHUB_STEP_SUMMARY"
             if [ "$result" != success ]; then
               echo "::error::$check finished with result: $result"
@@ -240,3 +264,159 @@ jobs:
             fi
           done
           exit "$failed"
+
+  archives:
+    name: Build release archives
+    needs: frontend
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      CI: true
+      RELEASE_TAG: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || '' }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16
+        with:
+          go-version-file: go.mod
+
+      - name: Install dependencies
+        run: |
+          go mod download
+          go mod verify
+
+      - name: Download verified embedded frontend
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: embedded-frontend
+          path: web/dist
+
+      - name: Package release binaries with bounded parallelism
+        env:
+          BUILD_JOBS: "2"
+        run: |
+          version="${RELEASE_TAG:-v$(python3 -c 'import json; print(json.load(open("web/package.json"))["version"])')}"
+          python3 scripts/build_release_archives.py --version "$version" --jobs "$BUILD_JOBS"
+
+      - name: Verify release archives
+        run: |
+          (cd release && sha256sum --check checksums.txt)
+          for archive in release/*.tar.gz; do tar -tzf "$archive"; done
+          for archive in release/*.zip; do unzip -t "$archive"; done
+
+      - name: Generate stable Homebrew formula
+        if: ${{ startsWith(github.ref, 'refs/tags/v') && !contains(github.ref_name, '-') && !contains(github.ref_name, '+') }}
+        run: |
+          python3 scripts/homebrew.py --version "$RELEASE_TAG" \
+            --checksums release/checksums.txt --output release/timone.rb
+          (cd release && sha256sum timone.rb >> checksums.txt)
+
+      - name: Upload release archives
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: release-assets
+          compression-level: 0
+          path: |
+            release/*.tar.gz
+            release/*.zip
+            release/checksums.txt
+            release/timone.rb
+          if-no-files-found: error
+          retention-days: 7
+
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        if: inputs.release
+        with:
+          name: desktop-backend-linux-amd64
+          path: release/backends/linux-amd64/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        if: inputs.release
+        with:
+          name: desktop-backend-linux-arm64
+          path: release/backends/linux-arm64/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        if: inputs.release
+        with:
+          name: desktop-backend-darwin-amd64
+          path: release/backends/darwin-amd64/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        if: inputs.release
+        with:
+          name: desktop-backend-darwin-arm64
+          path: release/backends/darwin-arm64/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        if: inputs.release
+        with:
+          name: desktop-backend-windows-amd64
+          path: release/backends/windows-amd64/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
+
+  browser:
+    name: Browser and accessibility tests
+    needs: frontend
+    runs-on: ubuntu-24.04
+    container:
+      image: mcr.microsoft.com/playwright:v1.64.1-noble
+      options: --ipc=host
+    defaults:
+      run:
+        shell: bash
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320
+        with:
+          package_json_file: web/package.json
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '24'
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+      - run: pnpm --dir web install --frozen-lockfile
+      - name: Check Playwright matches the browser image
+        run: test "$(node -p 'require("./web/node_modules/@playwright/test/package.json").version')" = "1.64.1"
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: browser-application
+          path: bin
+      - run: chmod +x bin/timone
+      - run: pnpm --dir web run test:browser
+      - name: Retain browser reports
+        if: ${{ always() }}
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: browser-reports
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  desktop:
+    name: Desktop release packages
+    if: inputs.release
+    needs: archives
+    uses: ./.github/workflows/desktop.yml
+    with:
+      package-only: true
+      reuse-backend: true

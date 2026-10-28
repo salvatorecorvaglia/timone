@@ -9,6 +9,10 @@ on:
   workflow_dispatch:
   workflow_call:
     inputs:
+      reuse-backend:
+        description: Embed the verified backend produced by this CI run
+        type: boolean
+        default: false
       package-only:
         description: Skip source-level tests and only package/test the installers
         required: false
@@ -31,11 +35,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: macos-15, arch: arm64, executable: 'dist/mac-arm64/Timone.app/Contents/MacOS/Timone' }
-          - { os: macos-15-intel, arch: x64, executable: 'dist/mac/Timone.app/Contents/MacOS/Timone' }
-          - { os: ubuntu-24.04, arch: x64, executable: 'dist/linux-unpacked/timone-desktop' }
-          - { os: ubuntu-24.04-arm, arch: arm64, executable: 'dist/linux-arm64-unpacked/timone-desktop' }
-          - { os: windows-2025, arch: x64, executable: 'dist/win-unpacked/timone-desktop.exe' }
+          - { goos: darwin, os: macos-15, arch: arm64, goarch: arm64, executable: 'dist/mac-arm64/Timone.app/Contents/MacOS/Timone' }
+          - { goos: darwin, os: macos-15-intel, arch: x64, goarch: amd64, executable: 'dist/mac/Timone.app/Contents/MacOS/Timone' }
+          - { goos: linux, os: ubuntu-24.04, arch: x64, goarch: amd64, executable: 'dist/linux-unpacked/timone-desktop' }
+          - { goos: linux, os: ubuntu-24.04-arm, arch: arm64, goarch: arm64, executable: 'dist/linux-arm64-unpacked/timone-desktop' }
+          - { goos: windows, os: windows-2025, arch: x64, goarch: amd64, executable: 'dist/win-unpacked/timone-desktop.exe' }
     defaults:
       run:
         shell: bash
@@ -46,6 +50,7 @@ jobs:
         with:
           persist-credentials: false
       - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16
+        if: ${{ !inputs.reuse-backend || (runner.os == 'Linux' && matrix.arch == 'x64') }}
         with:
           go-version-file: go.mod
       - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320
@@ -59,24 +64,47 @@ jobs:
             desktop/pnpm-lock.yaml
             web/pnpm-lock.yaml
 
+      - name: Cache Electron downloads
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: |
+            ~/.cache/electron
+            ~/.cache/electron-builder
+            ~/Library/Caches/electron
+            ~/Library/Caches/electron-builder
+            ~/AppData/Local/electron/Cache
+            ~/AppData/Local/electron-builder/Cache
+          key: desktop-electron-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('desktop/pnpm-lock.yaml') }}
       - name: Install dependencies
+        env:
+          REUSE_BACKEND: ${{ inputs.reuse-backend || false }}
         run: |
-          pnpm --dir web install --frozen-lockfile
+          if [[ "$REUSE_BACKEND" != true ]]; then pnpm --dir web install --frozen-lockfile; fi
           pnpm --dir desktop install --frozen-lockfile
           pnpm --dir desktop exec install-electron
-          go mod download
-          go mod verify
+          if [[ "$REUSE_BACKEND" != true ]]; then go mod download; go mod verify; fi
 
+      - name: Download the verified native backend
+        if: inputs.reuse-backend
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: desktop-backend-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: backend-artifact
       - name: Build frontend and bundled backend
         env:
           CGO_ENABLED: '0'
+          REUSE_BACKEND: ${{ inputs.reuse-backend || false }}
         run: |
           python3 scripts/version.py --check
-          pnpm --dir web run build
-          mkdir -p desktop/resources
-          binary=timone
-          if [[ "$RUNNER_OS" == Windows ]]; then binary=timone.exe; fi
-          go build -trimpath -ldflags='-s -w' -o "desktop/resources/$binary" ./cmd/timone
+          if [[ "$REUSE_BACKEND" == true ]]; then
+            python3 scripts/prepare_desktop_backend.py --source backend-artifact --goos "${{ matrix.goos }}" --goarch "${{ matrix.goarch }}"
+          else
+            pnpm --dir web run build
+            mkdir -p desktop/resources
+            binary=timone
+            if [[ "$RUNNER_OS" == Windows ]]; then binary=timone.exe; fi
+            go build -trimpath -ldflags='-s -w' -o "desktop/resources/$binary" ./cmd/timone
+          fi
           pnpm --dir desktop run icons
 
       - name: Test desktop sources
@@ -86,8 +114,14 @@ jobs:
       - name: Install Linux desktop test dependencies
         if: runner.os == 'Linux'
         run: |
-          sudo apt-get update
-          sudo apt-get install --no-install-recommends -y xvfb libgtk-3-0t64 libnss3 libasound2t64 libgbm1 libxss1 libxtst6
+          for source in /etc/apt/sources.list /etc/apt/sources.list.d/ubuntu.sources /etc/apt/apt-mirrors.txt; do
+            if [[ -f "$source" ]]; then
+              sudo sed -i 's|http://azure.archive.ubuntu.com|https://archive.ubuntu.com|g; s|https://azure.archive.ubuntu.com|https://archive.ubuntu.com|g' "$source"
+            fi
+          done
+          options=(-o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30)
+          sudo apt-get "${options[@]}" update
+          sudo apt-get "${options[@]}" install -y --no-install-recommends xvfb libgtk-3-0t64 libnss3 libasound2t64 libgbm1 libxss1 libxtst6
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
 
       - name: Test desktop application
