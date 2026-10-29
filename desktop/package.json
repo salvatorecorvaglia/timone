@@ -7,7 +7,7 @@
   "author": "Salvatore Corvaglia",
   "license": "MIT",
   "homepage": "https://github.com/salvatorecorvaglia/timone",
-  "packageManager": "pnpm@11.23.0",
+  "packageManager": "pnpm@12.16.1",
   "scripts": {
     "start": "electron .",
     "test": "node --test test/*.test.cjs",
