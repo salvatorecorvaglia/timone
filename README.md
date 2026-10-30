@@ -22,7 +22,7 @@ Visibility depends on the configured Kubernetes identity and its RBAC permission
 
 ## Quick start from source
 
-Install **Go 1.26.10 or newer**, **Node.js 24 or newer**, and **pnpm 11.23.0**. Run these commands from the repository root in a POSIX shell:
+Install **Go 1.26.10 or newer**, **Node.js 24 or newer**, and **pnpm 12.16.1**. Run these commands from the repository root in a POSIX shell:
 
 ```sh
 go mod download

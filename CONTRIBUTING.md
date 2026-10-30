@@ -4,7 +4,7 @@ Thanks for helping improve Timone. Bug reports, feature ideas, documentation fix
 
 ## Development setup
 
-Install Go 1.26.10 or newer, Node.js 24 or newer, and pnpm 11.23.0. The commands below use a POSIX shell and run from the repository root unless stated otherwise.
+Install Go 1.26.10 or newer, Node.js 24 or newer, and pnpm 12.16.1. The commands below use a POSIX shell and run from the repository root unless stated otherwise.
 
 ```sh
 go mod download

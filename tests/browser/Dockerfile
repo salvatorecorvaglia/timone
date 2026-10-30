@@ -4,7 +4,7 @@ FROM node:24-alpine
 RUN apk add --no-cache chromium
 WORKDIR /work/web
 COPY web/package.json web/pnpm-lock.yaml web/pnpm-workspace.yaml ./
-RUN corepack enable && corepack prepare pnpm@11.23.0 --activate
+RUN corepack enable && corepack prepare pnpm@12.16.1 --activate
 RUN pnpm install --frozen-lockfile --ignore-scripts
 COPY --from=app /usr/local/bin/timone /work/bin/timone
 COPY tests/browser /work/tests/browser
