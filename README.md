@@ -144,3 +144,25 @@ pnpm --dir web run lint
 pnpm --dir web run test
 pnpm --dir web run build
 ```
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+## 📜 Changelog
+
+Detailed release history and version changes can be found in [CHANGELOG.md](CHANGELOG.md).
+
+## 🔐 Security
+
+If you discover a security vulnerability, please see our [Security Policy](SECURITY.md).
+
+## 📝 License
+
+Distributed under the MIT License. See [LICENSE](LICENSE) for more information.
+
+---
+
+**Author**: [Salvatore Corvaglia](https://github.com/salvatorecorvaglia)
