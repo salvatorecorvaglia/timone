@@ -158,6 +158,8 @@ export interface KEvent {
   firstObserved?: string;
 }
 export interface Issue {
+  ruleIDs?: string[];
+  runbooks?: { id: string; title: string; url: string }[];
   recentChanges: string[] | null;
   diagnosticPolicy: DiagnosticPolicy;
   id: string;
@@ -206,6 +208,11 @@ export interface RoutingAssessment {
   resolvedRefs?: 'True' | 'False' | 'Unknown';
 }
 export interface Graph {
+  root?: string;
+  depth?: number;
+  direction?: string;
+  path?: string[];
+  pathState?: string;
   nodes: Resource[];
   edges: GraphEdge[];
   truncated: boolean;
@@ -417,6 +424,7 @@ export interface Integration {
   detected?: boolean | null;
 }
 export interface Cluster {
+  key?: string;
   name: string;
   mode: 'demo' | 'cluster';
   scope: string;
@@ -442,6 +450,7 @@ export interface Overview {
   customDiagnostics: CustomDiagnosticCoverage;
 }
 export interface Detail {
+  related?: Resource[];
   resource: Resource;
   manifest: Record<string, unknown>;
   events: KEvent[];
@@ -520,4 +529,55 @@ export interface Workspace {
   revision: number;
   contexts: string[];
   message: string;
+}
+
+export interface InvestigationWindow {
+  start: string;
+  end: string;
+}
+export interface WorkloadLogLine {
+  timestamp: string | null;
+  pod: string;
+  container: string;
+  text: string;
+}
+export interface WorkloadLogs {
+  window: InvestigationWindow;
+  lines: WorkloadLogLine[];
+  sources: {
+    pod: string;
+    uid: string;
+    container: string;
+    state: string;
+    message: string;
+    truncated: boolean;
+  }[];
+  warnings: Warning[];
+  truncated: boolean;
+  mode: string;
+}
+export interface Incident {
+  schemaVersion: number;
+  cluster: string;
+  mode: string;
+  collectedAt: string;
+  window: InvestigationWindow;
+  detail: Detail;
+  resources: Resource[];
+  issues: Issue[];
+  events: KEvent[];
+  changes: { id: string; resource: Resource; type: string; evidence: string; observedAt: string }[];
+  metrics: Metric[];
+  history: MetricHistory[];
+  logs?: WorkloadLogs;
+  warnings: Warning[];
+  limitations: string[];
+}
+export interface StorageInvestigation {
+  events: KEvent[];
+  items: { resource: Resource; facts: Record<string, string> }[];
+  edges: GraphEdge[];
+  warnings: Warning[];
+  limitations: string[];
+  mode: string;
 }

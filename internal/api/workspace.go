@@ -57,6 +57,9 @@ func (rt *Runtime) makeState(s *service.Service, rev uint64) *workspaceState {
 	state.handler = newWithRuntime(s, rt.config, rt.assets, rt.broker, rt.log, rt, rt.authn)
 	go func() {
 		defer close(state.done)
+		archiveDone := make(chan struct{})
+		go func() { defer close(archiveDone); s.CollectArchive(ctx) }()
+		defer func() { <-archiveDone }()
 		maintenanceDone := make(chan struct{})
 		go func() { defer close(maintenanceDone); s.Maintain(ctx) }()
 		defer func() { <-maintenanceDone }()

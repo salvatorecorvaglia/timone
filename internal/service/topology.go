@@ -17,8 +17,8 @@ func (s *Service) Topology(ctx context.Context, q Query) (model.Graph, error) {
 // cannot hide the resource types selected by the operator.
 func (s *Service) TopologyWithGroup(ctx context.Context, q Query, group string) (model.Graph, error) {
 	groups := map[string][]string{
-		"workloads":     {"Deployment", "StatefulSet", "DaemonSet", "ReplicaSet", "Pod", "Job", "CronJob"},
-		"networking":    {"Service", "Ingress", "Gateway", "GatewayClass", "ReferenceGrant", "HTTPRoute", "Pod"},
+		"workloads":     {"HorizontalPodAutoscaler", "PodDisruptionBudget", "Deployment", "StatefulSet", "DaemonSet", "ReplicaSet", "Pod", "Job", "CronJob"},
+		"networking":    {"Service", "EndpointSlice", "Ingress", "Gateway", "GatewayClass", "ReferenceGrant", "HTTPRoute", "Pod"},
 		"configuration": {"Secret", "ConfigMap", "PersistentVolumeClaim", "Pod"},
 	}
 	if group != "" && groups[group] == nil {
@@ -148,6 +148,37 @@ func visitDeclaredEdges(ctx context.Context, snap model.Snapshot, all map[string
 			if model.Str(ref, "uid") == "" || model.Str(ref, "uid") == model.Str(all[parent].Object, "metadata", "uid") {
 				add(parent, r.ID, "owns")
 			}
+		}
+		if r.Kind == "EndpointSlice" {
+			if service := model.Str(r.Object, "metadata", "labels", "kubernetes.io/service-name"); service != "" {
+				add(model.ID("Service", r.Namespace, service), r.ID, "publishes endpoints")
+			}
+			for _, raw := range model.Arr(r.Object, "endpoints") {
+				ep, _ := raw.(map[string]any)
+				if model.Str(ep, "targetRef", "kind") == "Pod" {
+					target := model.ID("Pod", r.Namespace, model.Str(ep, "targetRef", "name"))
+					if uid := model.Str(ep, "targetRef", "uid"); uid == "" || uid == model.Str(all[target].Object, "metadata", "uid") {
+						add(r.ID, target, "targets")
+					}
+				}
+			}
+		}
+		if r.Kind == "HorizontalPodAutoscaler" {
+			add(r.ID, model.ID(model.Str(r.Object, "spec", "scaleTargetRef", "kind"), r.Namespace, model.Str(r.Object, "spec", "scaleTargetRef", "name")), "scales")
+		}
+		if r.Kind == "PersistentVolumeClaim" {
+			volume := all[model.ID("PersistentVolume", "", model.Str(r.Object, "spec", "volumeName"))]
+			if model.Str(r.Object, "metadata", "uid") != "" && model.Str(volume.Object, "spec", "claimRef", "uid") == model.Str(r.Object, "metadata", "uid") && model.Str(volume.Object, "spec", "claimRef", "name") == r.Name && model.Str(volume.Object, "spec", "claimRef", "namespace") == r.Namespace {
+				add(r.ID, volume.ID, "bound to")
+			}
+		}
+		if r.Kind == "PersistentVolume" || r.Kind == "PersistentVolumeClaim" {
+			if class := model.Str(r.Object, "spec", "storageClassName"); class != "" {
+				add(r.ID, model.ID("StorageClass", "", class), "uses class")
+			}
+		}
+		if r.Kind == "VolumeAttachment" {
+			add(model.ID("PersistentVolume", "", model.Str(r.Object, "spec", "source", "persistentVolumeName")), r.ID, "attachment")
 		}
 		if r.Kind == "Service" {
 			sel := model.Map(r.Object, "spec", "selector")

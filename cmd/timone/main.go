@@ -78,6 +78,9 @@ func run(log *slog.Logger, options cliOptions) error {
 	if err != nil {
 		return err
 	}
+	if e := configureArchive(svc, c); e != nil {
+		return e
+	}
 	listener, err := net.Listen("tcp", c.Listen)
 	if err != nil {
 		return fmt.Errorf("cannot listen: %w", err)
@@ -120,7 +123,14 @@ func run(log *slog.Logger, options cliOptions) error {
 			selectedHistory = history
 		}
 
-		return service.NewWithDiagnosticPolicy(p, selectedHistory, next.Diagnostics)
+		replacement, err := service.NewWithDiagnosticPolicy(p, selectedHistory, next.Diagnostics)
+		if err != nil {
+			return nil, err
+		}
+		if err = configureArchive(replacement, next); err != nil {
+			return nil, err
+		}
+		return replacement, nil
 	})
 	defer runtime.Close()
 	server := &http.Server{Addr: c.Listen, Handler: runtime, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 16 << 10, BaseContext: func(net.Listener) context.Context { return ctx }}
@@ -155,4 +165,13 @@ func run(log *slog.Logger, options cliOptions) error {
 		}
 		return e
 	}
+}
+
+func configureArchive(s *service.Service, c config.Config) error {
+	runbooks, err := service.LoadRunbooks(c.RunbooksFile)
+	if err != nil {
+		return err
+	}
+	s.ConfigureRunbooks(runbooks)
+	return s.ConfigureArchive(service.ArchiveOptions{Directory: c.HistoryDirectory, Retention: time.Duration(c.HistoryRetentionHours) * time.Hour, MaxBytes: int64(c.HistoryMaxMiB) << 20, Interval: time.Duration(c.HistoryIntervalSeconds) * time.Second})
 }

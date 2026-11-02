@@ -56,6 +56,9 @@ func validContainer(name string) bool {
 	return q.Validate() == nil
 }
 func (s *Service) MetricHistory(ctx context.Context, q model.HistoryQuery) (model.MetricHistory, error) {
+	return s.metricHistoryWindow(ctx, q, nil)
+}
+func (s *Service) metricHistoryWindow(ctx context.Context, q model.HistoryQuery, window *InvestigationWindow) (model.MetricHistory, error) {
 	duration, err := historyRange(&q)
 	if err != nil {
 		return model.MetricHistory{}, err
@@ -73,9 +76,16 @@ func (s *Service) MetricHistory(ctx context.Context, q model.HistoryQuery) (mode
 	}
 	end := time.Now().UTC().Truncate(time.Minute)
 	start := end.Add(-duration)
+	if window != nil {
+		start, end = window.Start, window.End
+		duration = end.Sub(start)
+	}
 	step := int64(math.Max(1, math.Ceil(duration.Seconds()/240/60))) * 60
 	status := s.HistoryStatus()
 	out := model.MetricHistory{HistoryData: model.HistoryData{State: status.State, Message: status.Message, Series: []model.HistorySeries{}, Warnings: []model.Warning{}}, Source: status.Source, Mode: s.Provider.Mode(), Resource: model.Summarize(o), Range: q.Range, Start: start, End: end, Step: step}
+	if window != nil {
+		out.Range = "custom"
+	}
 	containers := []string{}
 	if q.Kind == "Pod" {
 		seen := map[string]bool{}

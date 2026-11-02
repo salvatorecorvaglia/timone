@@ -15,6 +15,14 @@ type Kind struct {
 }
 
 var Kinds = []Kind{
+	{"ControllerRevision", "apps", "v1", "controllerrevisions", true},
+	{"StorageClass", "storage.k8s.io", "v1", "storageclasses", false},
+	{"VolumeAttachment", "storage.k8s.io", "v1", "volumeattachments", false},
+	{"HorizontalPodAutoscaler", "autoscaling", "v2", "horizontalpodautoscalers", true},
+	{"PodDisruptionBudget", "policy", "v1", "poddisruptionbudgets", true},
+	{"ResourceQuota", "", "v1", "resourcequotas", true},
+	{"LimitRange", "", "v1", "limitranges", true},
+	{"EndpointSlice", "discovery.k8s.io", "v1", "endpointslices", true},
 	{"Node", "", "v1", "nodes", false}, {"Namespace", "", "v1", "namespaces", false}, {"Pod", "", "v1", "pods", true},
 	{"Deployment", "apps", "v1", "deployments", true}, {"ReplicaSet", "apps", "v1", "replicasets", true}, {"StatefulSet", "apps", "v1", "statefulsets", true}, {"DaemonSet", "apps", "v1", "daemonsets", true},
 	{"Job", "batch", "v1", "jobs", true}, {"CronJob", "batch", "v1", "cronjobs", true}, {"Service", "", "v1", "services", true}, {"Ingress", "networking.k8s.io", "v1", "ingresses", true}, {"ConfigMap", "", "v1", "configmaps", true}, {"Secret", "", "v1", "secrets", true},

@@ -73,6 +73,9 @@ export function Timeline({ namespace }: { namespace: string }) {
           </span>
         }
       />
+      <Link className="button" to="/history">
+        Open persistent history and sampling coverage
+      </Link>
       <details className="diagnostic-policy">
         <summary>Observed resource changes</summary>
         <p className="muted">{changes.data?.retention}</p>

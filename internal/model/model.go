@@ -3,6 +3,7 @@ package model
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"time"
 )
 
@@ -132,7 +133,14 @@ func NewerEvent(a, b Event) bool {
 	return ta.After(tb)
 }
 
+type RunbookLink struct {
+	ID    string `json:"id"`
+	Title string `json:"title"`
+	URL   string `json:"url"`
+}
 type Issue struct {
+	RuleIDs          []string         `json:"ruleIDs"`
+	Runbooks         []RunbookLink    `json:"runbooks"`
 	RecentChanges    []string         `json:"recentChanges"`
 	DiagnosticPolicy DiagnosticPolicy `json:"diagnosticPolicy"`
 	ID               string           `json:"id"`
@@ -255,6 +263,25 @@ func Summarize(o Object) Resource {
 	kind, ns, name := Str(o, "kind"), Str(o, "metadata", "namespace"), Str(o, "metadata", "name")
 	r := Resource{ID: ID(kind, ns, name), Kind: kind, Name: name, Namespace: ns, Health: "unknown", Status: "Observed", CreatedAt: Str(o, "metadata", "creationTimestamp"), Labels: Map(o, "metadata", "labels"), Object: o}
 	switch kind {
+	case "HorizontalPodAutoscaler":
+		r.Status = fmt.Sprintf("%v current / %v desired replicas", Num(o, "status", "currentReplicas"), Num(o, "status", "desiredReplicas"))
+		for _, raw := range Arr(o, "status", "conditions") {
+			c, _ := raw.(map[string]any)
+			if (Str(c, "type") == "AbleToScale" || Str(c, "type") == "ScalingActive") && Str(c, "status") == "False" {
+				r.Health = "warning"
+				r.Status = Str(c, "reason")
+			}
+		}
+	case "PodDisruptionBudget":
+		if Value(o, "status", "disruptionsAllowed") != nil {
+			r.Status = fmt.Sprintf("%v voluntary disruptions allowed", Num(o, "status", "disruptionsAllowed"))
+		}
+	case "ResourceQuota":
+		r.Status = "Namespace quota"
+	case "LimitRange":
+		r.Status = "Namespace resource defaults and constraints"
+	case "EndpointSlice":
+		r.Status = fmt.Sprintf("%d published endpoints", len(Arr(o, "endpoints")))
 	case "Pod":
 		summarizePod(o, &r)
 	case "Deployment", "StatefulSet", "ReplicaSet", "DaemonSet":
@@ -321,6 +348,8 @@ func Summarize(o Object) Resource {
 
 // Sanitize removes Secret payloads and annotations (including last-applied manifests),
 // and direct environment variable values in every API, UI, and MCP response.
+// Only a presence marker for mirror Pods and a validated positive deployment
+// revision number survive from top-level annotations. ControllerRevision data is omitted.
 func Sanitize(o Object) Object {
 	b, err := json.Marshal(o)
 	if err != nil {
@@ -330,9 +359,23 @@ func Sanitize(o Object) Object {
 	if json.Unmarshal(b, &copy) != nil {
 		return nil
 	}
+	safeAnnotations := map[string]any{}
+	kind := Str(copy, "kind")
+	if _, present := Map(copy, "metadata", "annotations")["kubernetes.io/config.mirror"]; kind == "Pod" && present {
+		safeAnnotations["kubernetes.io/config.mirror"] = "[PRESENT]"
+	}
+	if kind == "Deployment" || kind == "ReplicaSet" {
+		raw := Str(copy, "metadata", "annotations", "deployment.kubernetes.io/revision")
+		if n, e := strconv.ParseInt(raw, 10, 64); e == nil && n > 0 {
+			safeAnnotations["deployment.kubernetes.io/revision"] = strconv.FormatInt(n, 10)
+		}
+	}
 	copy = projectGitOps(copy)
 	delete(Map(copy, "metadata"), "managedFields")
 	delete(Map(copy, "metadata"), "annotations")
+	if Str(copy, "kind") == "ControllerRevision" {
+		delete(copy, "data")
+	}
 	if Str(copy, "kind") == "Secret" {
 		delete(copy, "data")
 		delete(copy, "stringData")
@@ -370,6 +413,9 @@ func Sanitize(o Object) Object {
 		}
 	}
 	walk(map[string]any(copy))
+	if len(safeAnnotations) > 0 {
+		Map(copy, "metadata")["annotations"] = safeAnnotations
+	}
 	return copy
 }
 

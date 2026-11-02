@@ -521,14 +521,16 @@ describe('Timone product flows', () => {
     const g = buildGraph(input, {
       search: 'checkout',
       group: '',
-      limit: 60,
+      limit: 100,
       showNamespaces: false,
       showPods: true,
       selected,
       labels: false,
     });
-    expect(g.nodes.length).toBeLessThanOrEqual(60);
-    expect(g.edges.filter((e) => e.source === selected)).toHaveLength(3);
+    expect(g.nodes.length).toBeLessThanOrEqual(100);
+    expect(g.edges.filter((e) => e.source === selected)).toHaveLength(
+      input.edges.filter((e) => e.source === selected).length,
+    );
     const n = g.nodes.find((n) => n.id === 'Pod:production:checkout-api-7c8d9f-m4n7q');
     expect(n?.style?.opacity).toBe(1);
     const unrelated = g.nodes.find((n) => n.id === 'Service:production:payments');

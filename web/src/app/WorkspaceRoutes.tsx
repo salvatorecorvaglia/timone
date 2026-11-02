@@ -1,4 +1,5 @@
 import { lazy, Suspense } from 'react';
+import { SavedWorkspace } from '../features/SavedWorkspace';
 import { Route, Routes, useLocation } from 'react-router-dom';
 import { PageBoundary } from '../components/PageBoundary';
 import { Empty, Loading } from '../components/ui';
@@ -30,6 +31,13 @@ const Applications = lazy(() =>
 const HelmRelease = lazy(() =>
   import('../features/Helm').then((m) => ({ default: m.HelmRelease })),
 );
+const Snapshots = lazy(() =>
+  import('../features/Snapshots').then((m) => ({ default: m.Snapshots })),
+);
+const PersistentHistory = lazy(() =>
+  import('../features/PersistentHistory').then((m) => ({ default: m.PersistentHistory })),
+);
+
 const Topology = lazy(() => import('../features/Topology').then((m) => ({ default: m.Topology })));
 
 export function WorkspaceRoutes({
@@ -57,6 +65,9 @@ export function WorkspaceRoutes({
           <Route path="/issues/:id" element={<Issues namespace={actualNS} />} />
           <Route path="/events" element={<Timeline namespace={actualNS} />} />
           <Route path="/topology" element={<Topology namespace={actualNS} />} />
+          <Route path="/saved" element={<SavedWorkspace />} />
+          <Route path="/snapshots" element={<Snapshots namespace={actualNS} />} />
+          <Route path="/history" element={<PersistentHistory namespace={actualNS} />} />
           <Route path="/metrics" element={<MetricsPage namespace={actualNS} />} />
           <Route path="/audit" element={<Audit namespace={actualNS} />} />
           <Route path="/integrations" element={<Integrations namespace={actualNS} />} />

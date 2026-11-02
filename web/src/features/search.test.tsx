@@ -61,7 +61,7 @@ describe('Global resource search', () => {
     expect(await screen.findByText('21–40')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Previous search results' })).toBeEnabled();
     if (first) expect(screen.queryByText(first)).not.toBeInTheDocument();
-    fireEvent.click(screen.getByText('Collection coverage (31)'));
+    fireEvent.click(screen.getByText(/Collection coverage \(\d+\)/));
     expect(screen.getByText('ReferenceGrant', { selector: 'span' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Previous search results' }));
     expect(await screen.findByText('1–20')).toBeInTheDocument();

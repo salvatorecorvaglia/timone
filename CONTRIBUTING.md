@@ -4,7 +4,7 @@ Thanks for helping improve Timone. Bug reports, feature ideas, documentation fix
 
 ## Development setup
 
-Install Go 1.26.10 or newer, Node.js 24 or newer. The commands below use a POSIX shell and run from the repository root unless stated otherwise.
+Install Go 1.27.0 or newer, Node.js 24 or newer, and pnpm 12.16.1, as pinned in `web/package.json` and `desktop/package.json`. The commands below use a POSIX shell and run from the repository root unless stated otherwise.
 
 ```sh
 go mod download
@@ -35,7 +35,7 @@ See [README.md](README.md) for local-cluster access, Docker Compose, and authent
 Run the checks relevant to your change. For a change spanning the backend and frontend, use:
 
 ```sh
-go test ./...
+go test -race -count=1 -timeout=10m ./...
 go vet ./...
 pnpm --dir web run typecheck
 pnpm --dir web run lint
@@ -82,28 +82,6 @@ not gated on shared runners. Budgets allow roughly 40% headroom for allocator an
 platform differences and should be tightened after measured optimizations; increases require an explained
 fixture or behavior change. Missing benchmark samples fail the check.
 
-The Go 1.26.10 / Apple M5 measurements after optimization are approximately
-17.2 MB/op for diagnostics with retained history, 25.3 MB/op for 5,000 failures
-with related events, 6.2 MB/op for dense applications, and 1.5 MB/op for 1,000 Pod
-metric aggregates. Three fixed-work samples against the preceding commit measured
-allocation-count reductions from 150,182 to 110,183 for retained-history diagnostics,
-35,067 to 5,064 for healthy diagnostics, 195,264 to 155,262 for related failures,
-7,102 to 2,589 for dense topology, and 210,310 to 69,275 for dense applications.
-The changes avoid formatting string values, format evidence only for real signals,
-compact diagnostic evidence in place, and use bounded stack storage for controller
-cycle detection. These are synthetic in-process fixtures, not cluster latency or
-resident-memory estimates.
-
-Frontend query-sharing tests measure the shell/feature mount sequence: previously
-a feature mounting after the shell request completed triggered a second request;
-with a shared 30-second freshness window the same sequence makes one request.
-Explicit invalidation still refreshes immediately, polling remains active, and
-namespace/investigation query keys remain independent. Distinct overview and
-investigation endpoints continue separate reads to preserve their response contracts.
-
-The concurrent load test separately bounds allocation churn to 40 MiB per call
-and retained heap growth to 32 MiB across its 80 investigations.
-
 For an allocation profile:
 
 ```sh
@@ -121,6 +99,21 @@ gzip variants only for JavaScript/CSS. API and SSE responses are not compressed.
 
 Core dark semantic colors live in `desktop/palette.css`, imported by both desktop
 onboarding and the web stylesheet; the web light theme overrides the same tokens.
+
+## Investigation and history changes
+
+Keep investigations read-only and preserve namespace scope, RBAC checks, cancellation, and bounded resource reads. Cover permission-denied and partial-data behavior alongside successful results. Configuration dependency views must not expose ConfigMap or Secret payloads; investigation exports exclude logs.
+
+For snapshots and saved views, cover schema validation, size limits, and resource or cluster identity handling. For persistent history, verify retention and disk limits using a temporary directory, and preserve the exclusion of event messages and resource configurations. History is disabled by default and remains disabled in desktop deployments. Runbook references must remain HTTPS links and must not execute commands or contact endpoints automatically.
+
+Use the service and API tests under `internal/service` and `internal/api`, frontend tests beside each feature, and `tests/browser/product.spec.mjs` for coverage appropriate to the behavior changed. Generate frontend contract fixtures with `pnpm --dir web run test:fixtures` when API projections change.
+
+For desktop changes, install its dependencies and run its unit tests:
+
+```sh
+pnpm --dir desktop install --frozen-lockfile
+pnpm --dir desktop test
+```
 
 ## Submit a pull request
 

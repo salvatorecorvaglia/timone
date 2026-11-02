@@ -39,7 +39,7 @@ func resourceSignals(r model.Resource, now time.Time, policy model.DiagnosticPol
 		return customConditionSignals(r, now, policy)
 	}
 	startupGrace := time.Duration(policy.StartupGraceSeconds) * time.Second
-	out := []signal{}
+	out := operationalSignals(r)
 	add := func(title, severity, fact, cause, step string, priority int) {
 		out = append(out, signal{title, severity, []string{fact}, []string{cause}, []string{step}, priority})
 	}
@@ -202,6 +202,7 @@ func detectIssues(snap model.Snapshot, policy model.DiagnosticPolicy) []model.Is
 				g.Title = s.title
 				g.Severity = s.severity
 			}
+			g.RuleIDs = append(g.RuleIDs, diagnosticRuleID(s.title))
 			g.Evidence = append(g.Evidence, s.evidence...)
 			g.Causes = append(g.Causes, s.causes...)
 			g.Recommendations = append(g.Recommendations, s.steps...)
@@ -228,6 +229,8 @@ func detectIssues(snap model.Snapshot, policy model.DiagnosticPolicy) []model.Is
 	}
 	out := []model.Issue{}
 	for _, g := range groups {
+		g.RuleIDs = unique(g.RuleIDs)
+		g.Runbooks = []model.RunbookLink{}
 		g.Evidence = unique(g.Evidence)
 		g.Causes = unique(g.Causes)
 		g.Recommendations = unique(g.Recommendations)
@@ -261,6 +264,7 @@ func (s *Service) detectIssues(snap model.Snapshot) []model.Issue {
 	}
 	recent := s.observations.relatedFor(snap.ObservedAt, wanted)
 	for i := range issues {
+		issues[i].Runbooks = s.issueRunbooks(issues[i])
 		resource := issues[i].Resource
 		for _, c := range recent[changeIdentity{resource.ID, model.Str(resource.Object, "metadata", "uid")}] {
 			issues[i].RecentChanges = append(issues[i].RecentChanges, c.Type+": "+c.Evidence+" Observed "+c.ObservedAt.Format(time.RFC3339)+"; correlation does not establish causation.")

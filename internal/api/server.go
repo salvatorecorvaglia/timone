@@ -200,6 +200,13 @@ func (a *Server) audit(w http.ResponseWriter, r *http.Request) {
 	respond(w, v, e)
 }
 func (a *Server) logs(w http.ResponseWriter, r *http.Request) {
+	for key, values := range r.URL.Query() {
+		if len(values) != 1 || (key != "container" && key != "tail" && key != "previous" && key != "sinceTime") {
+			fail(w, 400, "Invalid log parameter")
+			return
+		}
+	}
+
 	tail := 100
 	var e error
 	if r.URL.Query().Has("tail") {
@@ -209,6 +216,11 @@ func (a *Server) logs(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	v, e := a.service.Logs(r.Context(), r.PathValue("namespace"), r.PathValue("name"), r.URL.Query().Get("container"), tail)
+	previous := r.URL.Query().Get("previous")
+	if previous != "" && previous != "true" && previous != "false" {
+		fail(w, 400, "Invalid previous")
+		return
+	}
+	v, e := a.service.LogsWithOptions(r.Context(), r.PathValue("namespace"), r.PathValue("name"), r.URL.Query().Get("container"), tail, previous == "true", r.URL.Query().Get("sinceTime"))
 	respond(w, map[string]any{"logs": v, "mode": a.service.Provider.Mode()}, e)
 }

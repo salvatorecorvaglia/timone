@@ -53,7 +53,7 @@ func TestSearchAllBuiltinsAndEnabledCustomIdentities(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !got.Complete || got.Total != tc.want || len(got.Coverage) != 31 {
+		if !got.Complete || got.Total != tc.want || len(got.Coverage) != len(provider.Kinds)+2 {
 			t.Fatalf("%s %+v", tc.query, got)
 		}
 		for _, r := range got.Items {

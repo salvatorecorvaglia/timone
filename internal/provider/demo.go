@@ -52,8 +52,31 @@ func (d *demo) add(kind, ns, name string, spec, status map[string]any, labels ma
 	return o
 }
 func (d *demo) seed() {
+	sc := d.add("StorageClass", "", "demo-csi", nil, nil, nil)
+	sc["provisioner"] = "csi.demo.timone.io"
+	sc["volumeBindingMode"] = "WaitForFirstConsumer"
+	sc["reclaimPolicy"] = "Retain"
+	for _, name := range []string{"redis", "postgres"} {
+		d.add("PersistentVolume", "", name+"-pv", map[string]any{"capacity": map[string]any{"storage": "20Gi"}, "storageClassName": "demo-csi", "persistentVolumeReclaimPolicy": "Retain", "claimRef": map[string]any{"name": name + "-data", "namespace": "production", "uid": model.ID("PersistentVolumeClaim", "production", name+"-data")}, "csi": map[string]any{"driver": "csi.demo.timone.io"}}, map[string]any{"phase": "Bound"}, nil)
+		d.add("VolumeAttachment", "", name+"-attachment", map[string]any{"nodeName": "harbor-worker-01", "attacher": "csi.demo.timone.io", "source": map[string]any{"persistentVolumeName": name + "-pv"}}, map[string]any{"attached": true}, nil)
+	}
+
+	d.add("HorizontalPodAutoscaler", "production", "checkout-api", map[string]any{"minReplicas": 2, "maxReplicas": 10, "scaleTargetRef": map[string]any{"apiVersion": "apps/v1", "kind": "Deployment", "name": "checkout-api"}}, map[string]any{"currentReplicas": 3, "desiredReplicas": 3, "conditions": []any{map[string]any{"type": "ScalingActive", "status": "True"}}}, nil)
+	d.add("PodDisruptionBudget", "production", "checkout-api", map[string]any{"minAvailable": 1, "selector": map[string]any{"matchLabels": map[string]any{"app": "checkout-api"}}}, map[string]any{"disruptionsAllowed": 1, "currentHealthy": 2, "desiredHealthy": 1}, nil)
+	d.add("ResourceQuota", "production", "namespace-budget", nil, map[string]any{"hard": map[string]any{"pods": "100", "requests.cpu": "20"}, "used": map[string]any{"pods": "12", "requests.cpu": "4"}}, nil)
+	d.add("LimitRange", "production", "container-defaults", map[string]any{"limits": []any{map[string]any{"type": "Container", "defaultRequest": map[string]any{"cpu": "100m", "memory": "128Mi"}}}}, nil, nil)
+	ep := d.add("EndpointSlice", "production", "checkout-api-demo", nil, nil, map[string]any{"kubernetes.io/service-name": "checkout-api"})
+	ep["addressType"] = "IPv4"
+	ep["ports"] = []any{map[string]any{"name": "", "port": 8080, "protocol": "TCP"}}
+	ep["endpoints"] = []any{map[string]any{"addresses": []any{"10.0.1.20"}, "conditions": map[string]any{"ready": true}, "targetRef": map[string]any{"kind": "Pod", "namespace": "production", "name": "checkout-api-7c8d9f-k9x2p", "uid": model.ID("Pod", "production", "checkout-api-7c8d9f-k9x2p")}}}
+
 	for _, ns := range []string{"production", "platform", "staging", "kube-system"} {
-		d.add("Namespace", "", ns, nil, map[string]any{"phase": "Active"}, nil)
+		namespace := d.add("Namespace", "", ns, map[string]any{}, map[string]any{"phase": "Active"}, nil)
+		if ns == "staging" {
+			model.Map(namespace, "metadata")["deletionTimestamp"] = d.started.Add(-25 * time.Minute).Format(time.RFC3339)
+			model.Map(namespace, "spec")["finalizers"] = []any{"kubernetes"}
+			namespace["status"] = map[string]any{"phase": "Terminating", "conditions": []any{map[string]any{"type": "NamespaceContentRemaining", "status": "True", "reason": "SomeResourcesRemain", "message": "Simulated controller report: namespaced resources remain"}}}
+		}
 	}
 	for i := 1; i <= 3; i++ {
 		d.add("Node", "", fmt.Sprintf("harbor-worker-%02d", i), map[string]any{}, map[string]any{"conditions": []any{map[string]any{"type": "Ready", "status": "True"}}, "capacity": map[string]any{"cpu": "8", "memory": "32Gi"}, "allocatable": map[string]any{"cpu": "7800m", "memory": "30Gi"}, "nodeInfo": map[string]any{"kubeletVersion": "v1.35.2", "osImage": "Ubuntu 24.04 LTS"}}, map[string]any{"topology.kubernetes.io/zone": fmt.Sprintf("eu-west-1%c", 'a'+i-1)})
@@ -70,9 +93,11 @@ func (d *demo) seed() {
 			containers[0].(map[string]any)["env"] = []any{map[string]any{"name": "DATABASE_URL", "valueFrom": map[string]any{"secretKeyRef": map[string]any{"name": "checkout-db", "key": "url"}}}}
 		}
 		ps := map[string]any{"containers": containers, "serviceAccountName": "default", "securityContext": map[string]any{"runAsNonRoot": true}}
-		d.add("Deployment", a.ns, a.name, map[string]any{"replicas": a.replicas, "selector": map[string]any{"matchLabels": map[string]any{"app": a.name}}, "template": map[string]any{"metadata": map[string]any{"labels": labels}, "spec": ps}}, map[string]any{"readyReplicas": a.ready, "availableReplicas": a.ready, "updatedReplicas": a.replicas}, labels)
+		deployment := d.add("Deployment", a.ns, a.name, map[string]any{"replicas": a.replicas, "selector": map[string]any{"matchLabels": map[string]any{"app": a.name}}, "template": map[string]any{"metadata": map[string]any{"labels": labels}, "spec": ps}}, map[string]any{"readyReplicas": a.ready, "availableReplicas": a.ready, "updatedReplicas": a.replicas, "replicas": a.replicas}, labels)
+		model.Map(deployment, "metadata")["annotations"] = map[string]any{"deployment.kubernetes.io/revision": "1"}
 		rsname := a.name + "-7c8d9f"
 		rs := d.add("ReplicaSet", a.ns, rsname, map[string]any{"replicas": a.replicas}, map[string]any{"readyReplicas": a.ready}, labels)
+		model.Map(rs, "metadata")["annotations"] = map[string]any{"deployment.kubernetes.io/revision": "1"}
 		model.Map(rs, "metadata")["ownerReferences"] = []any{map[string]any{"kind": "Deployment", "name": a.name, "controller": true, "uid": model.ID("Deployment", a.ns, a.name)}}
 		d.add("Service", a.ns, a.name, map[string]any{"selector": map[string]any{"app": a.name}, "type": "ClusterIP", "clusterIP": fmt.Sprintf("10.43.0.%d", ai+10), "ports": []any{map[string]any{"port": 80, "targetPort": 8080}}}, nil, labels)
 		for i := 0; i < a.replicas; i++ {
@@ -125,13 +150,22 @@ func (d *demo) seed() {
 		labels := map[string]any{"app": a}
 		d.add("StatefulSet", "production", a, map[string]any{"replicas": 1}, map[string]any{"readyReplicas": 1}, labels)
 		pod := d.add("Pod", "production", a+"-0", map[string]any{"containers": []any{map[string]any{"name": a, "image": map[string]string{"redis": "redis:7.4.2", "postgres": "postgres:17.4"}[a]}}, "nodeName": "harbor-worker-01", "volumes": []any{map[string]any{"name": "data", "persistentVolumeClaim": map[string]any{"claimName": a + "-data"}}}}, map[string]any{"phase": "Running", "containerStatuses": []any{map[string]any{"name": a, "ready": true, "restartCount": 0}}}, labels)
-		model.Map(pod, "metadata")["ownerReferences"] = []any{map[string]any{"kind": "StatefulSet", "name": a, "controller": true, "uid": model.ID("StatefulSet", "production", a)}}
+		model.Map(pod, "metadata")["ownerReferences"] = []any{map[string]any{"apiVersion": "apps/v1", "kind": "StatefulSet", "name": a, "controller": true, "uid": model.ID("StatefulSet", "production", a)}}
 		d.add("Service", "production", a, map[string]any{"selector": labels, "ports": []any{map[string]any{"port": 5432}}}, nil, labels)
-		d.add("PersistentVolumeClaim", "production", a+"-data", map[string]any{"resources": map[string]any{"requests": map[string]any{"storage": "20Gi"}}, "accessModes": []any{"ReadWriteOnce"}}, map[string]any{"phase": "Bound"}, labels)
+		claim := d.add("PersistentVolumeClaim", "production", a+"-data", map[string]any{"volumeName": a + "-pv", "storageClassName": "demo-csi", "resources": map[string]any{"requests": map[string]any{"storage": "20Gi"}}, "accessModes": []any{"ReadWriteOnce"}}, map[string]any{"phase": "Bound"}, labels)
+		if a == "redis" {
+			model.Map(pod, "metadata")["deletionTimestamp"] = d.started.Add(-12 * time.Minute).Format(time.RFC3339)
+			model.Map(pod, "metadata")["deletionGracePeriodSeconds"] = 30
+			model.Map(pod, "metadata")["finalizers"] = []any{"demo.timone.io/cleanup"}
+			model.Map(claim, "metadata")["deletionTimestamp"] = d.started.Add(-10 * time.Minute).Format(time.RFC3339)
+			model.Map(claim, "metadata")["finalizers"] = []any{"kubernetes.io/pvc-protection"}
+		}
+
 	}
 	d.add("Ingress", "production", "public-storefront", map[string]any{"rules": []any{map[string]any{"host": "shop.demo.invalid", "http": map[string]any{"paths": []any{map[string]any{"path": "/", "backend": map[string]any{"service": map[string]any{"name": "storefront", "port": map[string]any{"number": 80}}}}}}}}}, nil, nil)
-	d.add("CronJob", "platform", "database-backup", map[string]any{"schedule": "0 2 * * *"}, nil, nil)
-	d.add("Job", "platform", "database-backup-29183040", nil, map[string]any{"succeeded": 1, "conditions": []any{map[string]any{"type": "Complete", "status": "True"}}}, nil)
+	cron := d.add("CronJob", "platform", "database-backup", map[string]any{"schedule": "0 2 * * *", "timeZone": "Europe/Rome", "concurrencyPolicy": "Forbid", "successfulJobsHistoryLimit": 3, "failedJobsHistoryLimit": 1}, map[string]any{"lastScheduleTime": d.started.Add(-time.Hour).Format(time.RFC3339), "lastSuccessfulTime": d.started.Add(-50 * time.Minute).Format(time.RFC3339)}, nil)
+	backup := d.add("Job", "platform", "database-backup-29183040", map[string]any{"completions": 1, "parallelism": 1, "backoffLimit": 6}, map[string]any{"succeeded": 1, "conditions": []any{map[string]any{"type": "Complete", "status": "True"}}}, nil)
+	model.Map(backup, "metadata")["ownerReferences"] = []any{map[string]any{"kind": "CronJob", "name": "database-backup", "controller": true, "uid": model.Str(cron, "metadata", "uid"), "apiVersion": model.Str(cron, "apiVersion")}}
 	d.add("DaemonSet", "kube-system", "node-agent", nil, map[string]any{"numberReady": 3, "desiredNumberScheduled": 3, "numberUnavailable": 0}, nil)
 	for _, ns := range []string{"production", "staging", "platform"} {
 		d.add("ServiceAccount", ns, "default", nil, nil, nil)

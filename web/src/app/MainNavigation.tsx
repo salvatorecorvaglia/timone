@@ -17,6 +17,7 @@ export const navigation = [
     group: 'WORKSPACE',
     items: [
       { path: '/', name: 'Overview', icon: LayoutDashboard },
+      { path: '/saved', name: 'Saved workspace', icon: Layers3 },
       { path: '/issues', name: 'Issues', icon: AlertTriangle },
       { path: '/applications', name: 'Applications', icon: Layers3 },
       { path: '/topology', name: 'Topology', icon: Network },
@@ -27,6 +28,8 @@ export const navigation = [
     items: [
       { path: '/resources', name: 'Resources', icon: Box },
       { path: '/custom-resources', name: 'Custom resources', icon: Layers3 },
+      { path: '/snapshots', name: 'Snapshots', icon: Layers3 },
+      { path: '/history', name: 'Persistent history', icon: Activity },
       { path: '/events', name: 'Events & Timeline', icon: Activity },
       { path: '/metrics', name: 'Metrics', icon: Activity },
     ],

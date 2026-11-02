@@ -4,6 +4,9 @@ import type { Graph, Resource } from '../types';
 type ResourceNode = Node<{ resource: Resource }, 'resource'>;
 
 const columns: Record<string, number> = {
+  HorizontalPodAutoscaler: 2,
+  PodDisruptionBudget: 2,
+  EndpointSlice: 3,
   Node: 0,
   Namespace: 0,
   Gateway: 0,
@@ -22,6 +25,9 @@ const columns: Record<string, number> = {
   Secret: 6,
   ConfigMap: 6,
   PersistentVolumeClaim: 6,
+  PersistentVolume: 7,
+  StorageClass: 8,
+  VolumeAttachment: 8,
 };
 export function buildGraph(
   graph: Graph,
@@ -41,10 +47,21 @@ export function buildGraph(
       (options.showPods || r.kind !== 'Pod') &&
       (!options.group ||
         (options.group === 'workloads'
-          ? ['Deployment', 'StatefulSet', 'DaemonSet', 'ReplicaSet', 'Pod', 'Job', 'CronJob']
+          ? [
+              'HorizontalPodAutoscaler',
+              'PodDisruptionBudget',
+              'Deployment',
+              'StatefulSet',
+              'DaemonSet',
+              'ReplicaSet',
+              'Pod',
+              'Job',
+              'CronJob',
+            ]
           : options.group === 'networking'
             ? [
                 'Service',
+                'EndpointSlice',
                 'Ingress',
                 'Gateway',
                 'GatewayClass',
@@ -55,7 +72,10 @@ export function buildGraph(
             : ['Secret', 'ConfigMap', 'PersistentVolumeClaim', 'Pod']
         ).includes(r.kind)),
   );
-  const sliced = filtered.slice(0, options.limit);
+  const ordered = graph.root
+    ? [...filtered].sort((a, b) => Number(b.id === graph.root) - Number(a.id === graph.root))
+    : filtered;
+  const sliced = ordered.slice(0, options.limit);
   const visible = new Set(sliced.map((r) => r.id));
   const related = new Set<string>([options.selected]);
   for (const e of graph.edges) {

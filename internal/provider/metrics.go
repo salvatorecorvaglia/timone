@@ -96,10 +96,19 @@ func parseQuantity(s string) (float64, error) {
 }
 func Quantity(s string) float64 { f, _ := parseQuantity(s); return f }
 func (k *cluster) Logs(ctx context.Context, ns, pod, container string, tail int) (string, error) {
+	return k.LogsWithOptions(ctx, ns, pod, container, tail, false, "")
+}
+func (k *cluster) LogsWithOptions(ctx context.Context, ns, pod, container string, tail int, previous bool, since string) (string, error) {
 	if k.namespace != "" && ns != k.namespace {
 		return "", &Error{403, "Namespace is outside configured scope"}
 	}
 	q := url.Values{"tailLines": {strconv.Itoa(tail)}, "limitBytes": {"131072"}, "timestamps": {"true"}}
+	if previous {
+		q.Set("previous", "true")
+	}
+	if since != "" {
+		q.Set("sinceTime", since)
+	}
 	if container != "" {
 		q.Set("container", container)
 	}

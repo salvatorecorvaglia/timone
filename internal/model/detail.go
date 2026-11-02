@@ -3,6 +3,7 @@ package model
 // Detail is the shared built-in/custom REST and MCP resource-detail contract.
 // Manifest contains only the applicable safe projection, never a raw object.
 type Detail struct {
+	Related   []Resource  `json:"related,omitempty"`
 	Resource  Resource    `json:"resource"`
 	Manifest  Object      `json:"manifest"`
 	Type      *CustomType `json:"type,omitempty"`

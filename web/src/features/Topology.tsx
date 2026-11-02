@@ -1,7 +1,7 @@
 import { buildGraph } from './topologyGraph';
 export { buildGraph } from './topologyGraph';
 import { ScopedLink as Link } from '../components/navigation';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   Background,
@@ -100,13 +100,39 @@ export function Topology({ namespace }: { namespace: string }) {
   const [p, setParams] = useSearchParams();
   const search = p.get('search') ?? '';
   const group = p.get('group') ?? '';
-  const data = useAPI<Graph>(`/api/v1/topology?${new URLSearchParams({ namespace, group })}`);
-  const [selected, setSelected] = useState('');
+  const focusKind = p.get('focusKind') ?? '';
+  const focusNS = p.get('focusNS') ?? namespace;
+  const focusName = p.get('focusName') ?? '';
+  const focused = !!focusKind && !!focusName;
+  const focusID = focused ? `${focusKind}:${focusNS}:${focusName}` : '';
+  const depth = Number(p.get('depth') ?? '1');
+  const direction = p.get('direction') ?? 'both';
+  const target = p.get('target') ?? '';
+  const data = useAPI<Graph>(
+    focused
+      ? `/api/v1/resources/${encodeURIComponent(focusKind)}/${encodeURIComponent(focusNS || '_')}/${encodeURIComponent(focusName)}/topology?${new URLSearchParams({ depth: String(depth), direction, target })}`
+      : `/api/v1/topology?${new URLSearchParams({ namespace, group })}`,
+  );
+  const [selected, setSelected] = useState(focusID);
+  useEffect(() => {
+    setSelected(focusID);
+  }, [focusID]);
+  const center = (resource: Resource) => {
+    const next = new URLSearchParams(p);
+    next.set('focusKind', resource.kind);
+    next.set('focusNS', resource.namespace);
+    next.set('focusName', resource.name);
+    next.set('depth', '1');
+    next.delete('target');
+    next.delete('group');
+    next.delete('nodes');
+    setParams(next);
+  };
   const [selectedEdge, setSelectedEdge] = useState('');
   const [showPods, setShowPods] = useState(true);
   const [showNamespaces, setShowNamespaces] = useState(false);
   const [labels, setLabels] = useState(false);
-  const requestedLimit = Number(p.get('nodes') ?? 60);
+  const requestedLimit = Number(p.get('nodes') ?? (focused ? 200 : 60));
   const limit = [30, 60, 120, 200].includes(requestedLimit) ? requestedLimit : 60;
   const update = (k: string, v: string) => {
     const n = new URLSearchParams(p);
@@ -119,15 +145,26 @@ export function Topology({ namespace }: { namespace: string }) {
       data.data
         ? buildGraph(data.data, {
             search,
-            group,
+            group: focused ? '' : group,
             limit,
-            showNamespaces,
+            showNamespaces: showNamespaces || focusKind === 'Namespace',
             showPods,
             selected,
             labels,
           })
         : { nodes: [], edges: [], total: 0 },
-    [data.data, search, group, limit, showNamespaces, showPods, selected, labels],
+    [
+      data.data,
+      search,
+      group,
+      limit,
+      showNamespaces,
+      showPods,
+      selected,
+      labels,
+      focused,
+      focusKind,
+    ],
   );
   const resource = data.data?.nodes.find((r) => r.id === selected);
   const edge = data.data?.edges.find(
@@ -153,6 +190,64 @@ export function Topology({ namespace }: { namespace: string }) {
         }
       />
       <Warnings items={data.data?.warnings} />
+      {focused && (
+        <Panel title={`Exploring ${focusKind}/${focusName}`}>
+          <p>
+            Depth {depth} · Declared relationships only. Missing paths do not establish
+            independence.
+          </p>
+          <button
+            className="button"
+            disabled={depth >= 4}
+            onClick={() => update('depth', String(depth + 1))}
+          >
+            Expand one level
+          </button>
+          <select
+            aria-label="Exploration direction"
+            value={direction}
+            onChange={(e) => update('direction', e.target.value)}
+          >
+            <option value="both">Dependencies and dependents</option>
+            <option value="out">Outgoing relationships</option>
+            <option value="in">Incoming relationships</option>
+          </select>
+          <select
+            aria-label="Find path to resource"
+            value={target}
+            onChange={(e) => update('target', e.target.value)}
+          >
+            <option value="">Choose path destination</option>
+            {data.data?.nodes.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.kind}/{r.name}
+              </option>
+            ))}
+          </select>
+          {data.data?.pathState === 'found' && <p>Observed path: {data.data.path?.join(' → ')}</p>}
+          {data.data?.pathState === 'not_found_in_observed_graph' && (
+            <p>No path found within the current depth and readable graph.</p>
+          )}
+          <button
+            className="button"
+            onClick={() => {
+              const next = new URLSearchParams(p);
+              for (const key of [
+                'focusKind',
+                'focusNS',
+                'focusName',
+                'depth',
+                'direction',
+                'target',
+              ])
+                next.delete(key);
+              setParams(next);
+            }}
+          >
+            Show namespace graph
+          </button>
+        </Panel>
+      )}
       <div className="filterbar">
         <div className="search-field">
           <Search size={15} />
@@ -165,6 +260,7 @@ export function Topology({ namespace }: { namespace: string }) {
           />
         </div>
         <select
+          disabled={focused}
           aria-label="Topology resource types"
           value={group}
           onChange={(e) => update('group', e.target.value)}
@@ -295,6 +391,9 @@ export function Topology({ namespace }: { namespace: string }) {
                   <ArrowUpRight size={14} />
                 </Link>
               </div>
+              <button className="button" onClick={() => center(resource)}>
+                Focus on selected resource
+              </button>
               <div className="detail-section">
                 <h3>Incoming & outgoing</h3>
                 {relations.map((e) => {

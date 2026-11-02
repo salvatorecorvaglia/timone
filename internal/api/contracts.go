@@ -7,6 +7,7 @@ import (
 
 // These DTOs keep the REST wire contract explicit without coupling it to handler state.
 type clusterResponse struct {
+	Key   string          `json:"key"`
 	Name  string          `json:"name"`
 	Mode  string          `json:"mode"`
 	Scope string          `json:"scope"`

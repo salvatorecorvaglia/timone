@@ -25,6 +25,7 @@ export function mockAPI() {
           ],
         }),
       );
+    if (key.endsWith('/efficiency')) key += `?range=${u.searchParams.get('range') ?? '24h'}`;
     if (key.endsWith('/grants'))
       key += `?limit=${u.searchParams.get('limit')}&offset=${u.searchParams.get('offset')}`;
     if (key === '/api/v1/search' && u.searchParams.get('search')) {

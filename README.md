@@ -12,6 +12,13 @@
 
 - Cluster overview, resource search, namespace filters, events, and workload diagnostics.
 - Resource details and topology views for exploring dependencies and networking.
+- HPA, PodDisruptionBudget, ResourceQuota, LimitRange and EndpointSlice inspection, with related workload and Service context.
+- Scheduling, rollout, node maintenance, storage, deletion, network policy, and batch workload investigations.
+- CPU and memory efficiency analysis, configuration dependency inspection, and incident investigations.
+- Resource snapshots with local file comparison, saved views, resource favorites, and focused topology.
+- Optional persistent observation history and administrator-configured HTTPS runbook links.
+- Container logs with previous-instance selection, start time, bounded tails, text filtering, download and optional two-second live refresh.
+- JSON and Markdown investigation exports from resource details; logs are downloaded separately and excluded from investigation exports.
 - Kubernetes metrics, with optional Prometheus integration for historical metrics.
 - RBAC inspection and ServiceAccount permission investigations.
 - Optional Helm history, explicitly enabled custom resources, and GitOps drift investigations through Argo CD or a rendered-manifest source for Flux.
@@ -21,6 +28,8 @@
 Visibility depends on the configured Kubernetes identity and its RBAC permissions. Timone does not modify cluster resources; suggested remediation commands remain actions for you to review and run separately.
 
 ## Quick start from source
+
+Install Go 1.27.0 or newer, Node.js 24 or newer, and pnpm 12.16.1 (the version pinned in `web/package.json`). Run these commands from the repository root:
 
 ```sh
 go mod download
@@ -92,6 +101,8 @@ Timone reads environment variables directly. It **does not automatically load `.
 | `TIMONE_ALLOW_EXEC_AUTH` | Explicit opt-in for trusted kubeconfig credential plugins. |
 | `TIMONE_PROMETHEUS_URL` | Explicit opt-in for historical metrics; configure cluster isolation and credentials as needed. |
 | `TIMONE_CUSTOM_RESOURCES` | Explicit allowlist of CRD names for metadata and condition inspection. |
+| `TIMONE_HISTORY_DIRECTORY` | Opt-in directory for persistent periodic observations; disabled when empty. |
+| `TIMONE_RUNBOOKS_FILE` | Administrator-maintained JSON file of HTTPS runbook references, loaded at startup. |
 | `TIMONE_HELM_DETAILS` | Opt-in for decoded Helm history summaries; requires Secret list permission. |
 
 An authentication token is required for non-loopback listeners and all `incluster` deployments. Tokens must contain 32–512 printable ASCII characters without spaces. Browser users log in with the token; API and MCP clients can send `Authorization: Bearer <token>`. Token files support credential rotation.
@@ -99,6 +110,10 @@ An authentication token is required for non-loopback listeners and all `incluste
 For an authenticated identity gateway, set `TIMONE_AUTH_MODE=proxy`, configure direct gateway peer CIDRs in `TIMONE_TRUSTED_PROXIES`, and set an HTTPS `TIMONE_PUBLIC_URL`. The gateway must supply `X-Forwarded-User` and the shared credential in `X-Timone-Proxy-Token`, replacing incoming client values. Proxy mode requires a token and does not accept browser token login.
 
 Timone uses the backend's Kubernetes credentials for resource access. UI authentication does not create a separate Kubernetes identity for each user. Grant that backend identity only the access appropriate for its audience. Secret payloads are redacted from responses, but granting Secret list access still permits the process to read them.
+
+## Observation history
+
+Persistent history is optional and configured for CLI/server deployments; desktop keeps it disabled. Set `TIMONE_HISTORY_DIRECTORY` to an absolute, owner-only directory with permissions `0700`. The default limits are seven days, 64 MiB, and one sample every 30 seconds. Configure them with `TIMONE_HISTORY_RETENTION_HOURS`, `TIMONE_HISTORY_MAX_MIB`, and `TIMONE_HISTORY_INTERVAL_SECONDS`. A global 2,000-record cap and the disk budget can shorten the retained duration. Event messages and resource configurations are excluded from persisted history.
 
 ## MCP and HTTP endpoints
 

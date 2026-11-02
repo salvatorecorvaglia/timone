@@ -23,6 +23,7 @@ import {
   Status,
   Warnings,
 } from '../components/ui';
+import { RunbookLinks } from './RunbookLinks';
 import { EventCard } from './EventCard';
 import { Filters } from './Filters';
 import { useFilters } from '../lib/filters';
@@ -252,6 +253,7 @@ export function Issues({ namespace }: { namespace: string }) {
                       <p className="muted">No related events currently retained.</p>
                     )}
                   </div>
+                  <RunbookLinks issue={selected} />
                   <div className="investigation-footer">
                     <Link className="button primary" to={resourceURL(selected.resource)}>
                       Inspect resource

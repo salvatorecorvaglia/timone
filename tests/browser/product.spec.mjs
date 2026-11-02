@@ -309,3 +309,251 @@ test('keeps closed mobile navigation out of the tab order and traps open navigat
  await expect(page.getByRole('button',{name:'Open navigation'})).toBeFocused();
  await expect(page.locator('#main-navigation')).toHaveAttribute('inert','');
 });
+
+test('correlates incident evidence and exports without application logs by default', async ({page})=>{
+ await page.goto('/resources/Deployment/production/checkout-api?tab=incident');
+ await expect(page.getByRole('heading',{name:'Current conditions and problems'})).toBeVisible();
+ await expect(page.getByRole('heading',{name:'Timeline in selected interval'})).toBeVisible();
+ await expect(page.getByRole('checkbox',{name:'Include application logs in investigation and exports'})).not.toBeChecked();
+ const downloadPromise=page.waitForEvent('download');
+ await page.getByRole('button',{name:'Export incident JSON'}).click();
+ const download=await downloadPromise;
+ expect(download.suggestedFilename()).toBe('incident.json');
+ const stream=await download.createReadStream();const chunks=[];for await(const chunk of stream)chunks.push(chunk);
+ const bundle=JSON.parse(Buffer.concat(chunks).toString('utf8'));
+ expect(bundle.schemaVersion).toBe(1);expect(bundle.logs).toBeUndefined();expect(bundle.cluster).toBe('harbor-demo');
+ const interval=new URL(page.url()).searchParams;
+ expect(interval.get('since')).toBeTruthy();expect(interval.get('until')).toBeTruthy();
+ await page.getByRole('tab',{name:'Workload logs'}).click();
+ await expect(page.getByRole('table',{name:'Log source coverage'})).toBeVisible();
+ const after=new URL(page.url()).searchParams;
+ expect(after.get('since')).toBe(interval.get('since'));expect(after.get('until')).toBe(interval.get('until'));
+});
+
+test('explores workload log origins and exact storage bindings', async ({page})=>{
+ await page.goto('/resources/Deployment/production/checkout-api?tab=logs');
+ const sources=page.getByRole('table',{name:'Log source coverage'});
+ await expect(sources).toBeVisible();await expect(sources).toContainText('checkout-api');
+ await page.getByRole('checkbox',{name:'Previous instances'}).check();
+ await expect(page.getByRole('checkbox',{name:/Live refresh/})).toBeDisabled();
+ await page.goto('/resources/StatefulSet/production/redis?tab=storage');
+ await expect(page.getByRole('heading',{name:'Storage investigation'})).toBeVisible();
+ await expect(page.getByRole('link',{name:'redis-data',exact:true})).toBeVisible();
+ await expect(page.getByRole('link',{name:'redis-pv',exact:true})).toBeVisible();
+ await expect(page.getByRole('link',{name:'demo-csi',exact:true})).toBeVisible();
+ await expect(page.getByRole('link',{name:'redis-attachment',exact:true})).toBeVisible();
+});
+
+test('expands resource-centered topology and finds a bounded declared path',async({page})=>{
+ await page.goto('/resources/Deployment/production/checkout-api');
+ await page.getByRole('link',{name:'Explore dependencies'}).click();
+ await expect(page.getByRole('heading',{name:'Exploring Deployment/checkout-api'})).toBeVisible();
+ await page.getByRole('button',{name:'Expand one level'}).click();
+ await expect(page.getByText('Depth 2 · Declared relationships only.',{exact:false})).toBeVisible();
+ await expect(page.getByRole('combobox',{name:'Find path to resource'}).locator('option[value="Pod:production:checkout-api-7c8d9f-m4n7q"]')).toHaveCount(1);
+ await page.getByRole('combobox',{name:'Find path to resource'}).selectOption('Pod:production:checkout-api-7c8d9f-m4n7q');
+ await expect(page.getByText('Observed path:',{exact:false})).toContainText('Deployment:production:checkout-api');
+ await expect(page.getByText('Observed path:',{exact:false})).toContainText('Pod:production:checkout-api-7c8d9f-m4n7q');
+});
+
+test('captures a sanitized snapshot and compares imported files offline',async({page})=>{
+ await page.goto('/resources/Deployment/production/checkout-api');
+ await page.getByRole('link',{name:'Capture / compare snapshots'}).click();
+ await page.getByRole('button',{name:'Capture snapshot',exact:true}).click();
+ const downloading=page.waitForEvent('download');
+ await page.getByRole('button',{name:'Download snapshot',exact:true}).click();
+ const file=await downloading;const stream=await file.createReadStream();const chunks=[];for await(const chunk of stream)chunks.push(chunk);
+ const before=JSON.parse(Buffer.concat(chunks).toString('utf8'));expect(before.schemaVersion).toBe(1);
+ const after=structuredClone(before);after.resources[0].configuration.replicas=99;
+ await page.route('**/api/v1/resources/**',route=>route.abort());
+ await page.getByLabel('Before snapshot file').setInputFiles({name:'before.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(before))});
+ await page.getByLabel('After snapshot file').setInputFiles({name:'after.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(after))});
+ await expect(page.getByRole('table',{name:'Snapshot differences'})).toContainText('/configuration/replicas');
+ await expect(page.getByRole('table',{name:'Snapshot differences'})).toContainText('99');
+});
+
+test('shows persistent collector status and sampled coverage',async({page})=>{
+ await page.goto('/history');
+ await expect(page.getByRole('heading',{name:'Persistent observation history'})).toBeVisible();
+ const status=await (await page.request.get('/api/v1/history/status')).json();
+ if(!status.enabled){await expect(page.getByText('Persistent history is disabled',{exact:true})).toBeVisible();return;}
+ await expect.poll(async()=> (await (await page.request.get('/api/v1/history/status')).json()).state).toBe('sampling');
+ await page.getByRole('button',{name:'Refresh retained history'}).click();
+ await expect(page.getByRole('heading',{name:'Sampling coverage'})).toBeVisible();
+ await expect(page.getByText(/retained samples in selected interval/)).toBeVisible();
+});
+
+test('persists named views and favorites across browser reloads',async({page})=>{
+ await page.goto('/resources?kind=Pod&namespace=production&status=critical');
+ await page.getByText('Save this view',{exact:true}).click();
+ await page.getByLabel('Saved view name').fill('Production failures');
+ await page.getByRole('button',{name:'Save view',exact:true}).click();
+ await expect(page.getByText('Saved in this browser.',{exact:true})).toBeVisible();
+ await page.goto('/resources/Deployment/production/checkout-api');
+ await page.getByRole('button',{name:'Favorite resource',exact:true}).click();
+ await page.reload();
+ await expect(page.getByRole('button',{name:'Remove favorite',exact:true})).toHaveAttribute('aria-pressed','true');
+ await page.goto('/saved');
+ await expect(page.getByRole('link',{name:'Deployment/checkout-api',exact:true})).toBeVisible();
+ await page.getByRole('link',{name:'Production failures',exact:true}).click();
+ await expect(page).toHaveURL(/status=critical/);
+ await page.goto('/saved');
+ await page.getByRole('button',{name:'Remove Deployment/checkout-api',exact:true}).click();
+ await page.reload();
+ await expect(page.getByRole('link',{name:'Deployment/checkout-api',exact:true})).toHaveCount(0);
+});
+
+test('reads only explicitly selected workload log sources and preserves selection in URL',async({page})=>{
+ const response=await page.request.get('/api/v1/resources/Deployment/production/checkout-api/log-sources');
+ const catalog=await response.json();const source=catalog.sources.at(-1);
+ await page.goto('/resources/Deployment/production/checkout-api?tab=logs');
+ await page.getByText('Select Pod/container sources',{exact:true}).click();
+ await page.getByRole('checkbox',{name:source.pod+'/'+source.container,exact:true}).check();
+ const loaded=page.waitForResponse(r=>r.url().includes('/logs?')&&new URL(r.url()).searchParams.has('sources'));
+ await page.getByRole('button',{name:'Apply selected sources',exact:true}).click();
+ const result=await (await loaded).json();
+ expect(result.sources).toHaveLength(1);expect(result.sources[0].uid).toBe(source.uid);
+ expect(new URL(page.url()).searchParams.get('logSources')).toContain(source.uid);
+ await page.reload();
+ await expect(page.getByRole('table',{name:'Log source coverage'}).locator('tbody tr')).toHaveCount(1);
+});
+
+test('links matching operational runbooks to stable issue rules',async({page})=>{
+ await page.goto('/issues/issue-Deployment%3Aproduction%3Acheckout-api?namespace=production');
+ await expect(page.getByRole('heading',{name:'Diagnostic rules & runbooks'})).toBeVisible();
+ await expect(page.getByText('container-failure',{exact:false})).toBeVisible();
+ const link=page.getByRole('link',{name:'Crash investigation runbook',exact:true});
+ if(process.env.TIMONE_RUNBOOKS_FILE){
+  await expect(link).toHaveAttribute('href','https://docs.example/runbooks/crashes');
+  await expect(link).toHaveAttribute('rel','noopener noreferrer');
+ }
+});
+
+test('explains scheduling constraints for a Pending Pod without claiming eligibility',async({page})=>{
+ await page.goto('/resources/Pod/production/notification-worker-7c8d9f-m4n7q');
+ await page.getByRole('tab',{name:'Scheduling',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'Scheduling constraints'})).toBeVisible();
+ await expect(page.getByRole('table',{name:'Node scheduling constraints'})).toContainText('harbor-worker');
+ await expect(page.getByText('Passing these checks does not establish',{exact:false})).toBeVisible();
+ const download=page.waitForEvent('download');
+ await page.getByRole('button',{name:'Export scheduling analysis',exact:true}).click();
+ expect((await download).suggestedFilename()).toBe('scheduling-assessment.json');
+});
+
+test('compares rollout generations, revision identities and current Pod images',async({page})=>{
+ await page.goto('/resources/Deployment/production/checkout-api');
+ await page.getByRole('tab',{name:'Rollout',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'Rollout investigation'})).toBeVisible();
+ await expect(page.getByRole('table',{name:'Rollout revisions'})).toContainText('checkout-api-7c8d9f');
+ await expect(page.getByRole('table',{name:'Rollout Pods'})).toContainText('checkout-api');
+ await expect(page.getByText('Reported target revision',{exact:true})).toBeVisible();
+ await expect(page.getByRole('table',{name:'Rollout Pods'}).getByRole('link',{name:'Logs',exact:true}).first()).toBeVisible();
+});
+
+test('shows node maintenance evidence with no eviction controls',async({page})=>{
+ await page.goto('/resources/Node/_/harbor-worker-01');
+ await page.getByRole('tab',{name:'Maintenance',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'Node maintenance assessment'})).toBeVisible();
+ await expect(page.getByRole('table',{name:'Node maintenance Pod checks'})).toContainText('redis-0');
+ await expect(page.getByRole('table',{name:'Shared node disruption budgets'})).toBeVisible();
+ await expect(page.getByRole('button',{name:/^(Drain|Cordon|Evict)/})).toHaveCount(0);
+});
+
+test('traces published network endpoints and evaluates an explicit source Pod',async({page})=>{
+ await page.goto('/resources/Service/production/checkout-api');
+ await page.getByRole('tab',{name:'Network paths',exact:true}).click();
+ await expect(page.getByRole('table',{name:'Published network endpoints'})).toContainText('checkout-api-7c8d9f-k9x2p');
+ await page.getByLabel('Source Pod',{exact:true}).fill('payments-7c8d9f-k9x2p');
+ await page.getByRole('button',{name:'Analyze source Pod',exact:true}).click();
+ await expect(page).toHaveURL(/sourcePod=payments/);
+ await expect(page.getByText('Policy source:',{exact:false})).toContainText('payments');
+ await page.reload();
+ await expect(page.getByLabel('Source Pod',{exact:true})).toHaveValue('payments-7c8d9f-k9x2p');
+ const downloading=page.waitForEvent('download');
+ await page.getByRole('button',{name:'Export network analysis',exact:true}).click();
+ const stream=await (await downloading).createReadStream();const chunks=[];for await(const chunk of stream)chunks.push(chunk);
+ const analysis=JSON.parse(Buffer.concat(chunks).toString('utf8'));
+ expect(analysis.state).toBe('configuration-only');expect(analysis.source.name).toBe('payments-7c8d9f-k9x2p');
+ expect(analysis.paths[0].endpoints[0].pod.name).toBe('checkout-api-7c8d9f-k9x2p');
+});
+
+test('inspects retained CronJob executions without inferring missed schedules',async({page})=>{
+ await page.goto('/resources/CronJob/platform/database-backup');
+ await page.getByRole('tab',{name:'Executions',exact:true}).click();
+ await expect(page.getByRole('table',{name:'Retained Job executions'})).toContainText('database-backup-29183040');
+ await expect(page.getByText('0 2 * * * · Europe/Rome',{exact:true})).toBeVisible();
+ await page.getByRole('table',{name:'Retained Job executions'}).getByRole('link',{name:'database-backup-29183040',exact:true}).click();
+ await page.getByRole('tab',{name:'Executions',exact:true}).click();
+ await expect(page.getByRole('table',{name:'Retained Job executions'})).toContainText('Complete=True');
+ const download=page.waitForEvent('download');
+ await page.getByRole('button',{name:'Export execution analysis',exact:true}).click();
+ expect((await download).suggestedFilename()).toBe('batch-analysis.json');
+});
+
+test('compares sampled resource efficiency and exports explicit coverage',async({page})=>{
+ await page.goto('/resources/Deployment/production/checkout-api');
+ await page.getByRole('tab',{name:'Resource efficiency',exact:true}).click();
+ await expect(page.getByRole('table',{name:'Container resource efficiency'})).toContainText('P95:');
+ await expect(page.getByText(/^Source: simulated · Window:/)).toBeVisible();
+ await page.getByLabel('Efficiency observation window',{exact:true}).selectOption('1h');
+ await expect(page).toHaveURL(/efficiencyRange=1h/);
+ const downloading=page.waitForEvent('download');
+ await page.getByRole('button',{name:'Export efficiency analysis',exact:true}).click();
+ const stream=await (await downloading).createReadStream();const chunks=[];for await(const chunk of stream)chunks.push(chunk);
+ const analysis=JSON.parse(Buffer.concat(chunks).toString('utf8'));
+ expect(analysis.range).toBe('1h');expect(analysis.source).toBe('simulated');
+ expect(analysis.containers.length).toBeGreaterThan(0);
+ const usage=analysis.containers[0].usage[0];
+ expect(usage.samples).toBeGreaterThan(0);expect(usage.coverage).toBeLessThanOrEqual(1);expect(usage.p95).toBeGreaterThan(0);
+ await page.reload();await expect(page.getByLabel('Efficiency observation window',{exact:true})).toHaveValue('1h');
+});
+
+test('inspects configuration references without exporting Secret payloads',async({page})=>{
+ await page.goto('/resources/Deployment/production/checkout-api');
+ await page.getByRole('tab',{name:'Configuration dependencies',exact:true}).click();
+ const table=page.getByRole('table',{name:'Configuration dependency references'});
+ await expect(table).toContainText('checkout-db');await expect(table).toContainText('key-unverified');
+ await expect(table).toContainText('desired-template');await expect(table).toContainText('current-pod');
+ const downloading=page.waitForEvent('download');
+ await page.getByRole('button',{name:'Export configuration analysis',exact:true}).click();
+ const stream=await (await downloading).createReadStream();const chunks=[];for await(const chunk of stream)chunks.push(chunk);
+ const analysis=JSON.parse(Buffer.concat(chunks).toString('utf8'));
+ expect(analysis.references.length).toBeGreaterThan(0);
+ for(const ref of analysis.references){expect(ref).not.toHaveProperty('data');expect(ref.resource).not.toHaveProperty('object');expect(ref.consumer).not.toHaveProperty('object');}
+});
+
+test('investigates Pod deletion requirements and exports observed identity',async({page})=>{
+ await page.goto('/resources/Pod/production/redis-0');
+ await page.getByRole('tab',{name:'Deletion diagnostics',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'Deletion diagnostics',exact:true})).toBeVisible();
+ const table=page.getByRole('table',{name:'Deletion dependency evidence'});
+ await expect(table).toContainText('assigned-node');await expect(table).toContainText('uid-verified');
+ await expect(page.getByText('metadata.finalizers: demo.timone.io/cleanup',{exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:/^(Force delete|Delete|Remove finalizer|Finalize)/})).toHaveCount(0);
+ const downloading=page.waitForEvent('download');
+ await page.getByRole('button',{name:'Export deletion analysis',exact:true}).click();
+ const stream=await (await downloading).createReadStream();const chunks=[];for await(const chunk of stream)chunks.push(chunk);
+ const analysis=JSON.parse(Buffer.concat(chunks).toString('utf8'));
+ expect(analysis.resource.name).toBe('redis-0');expect(analysis.uid).toBe('Pod:production:redis-0');
+ expect(analysis.deletion.metadataFinalizers).toContain('demo.timone.io/cleanup');
+ expect(analysis.deletion.secondsPastTimestamp).toBeGreaterThan(0);
+ await page.getByRole('checkbox',{name:'Show only related resources marked for deletion',exact:true}).check();
+ await expect(table).not.toContainText('assigned-node');
+});
+
+test('follows PVC deletion evidence through its verified binding',async({page})=>{
+ await page.goto('/resources/PersistentVolumeClaim/production/redis-data?tab=termination');
+ const table=page.getByRole('table',{name:'Deletion dependency evidence'});
+ await expect(table).toContainText('redis-0');await expect(table).toContainText('bound-volume');
+ await expect(table).toContainText('redis-attachment');
+ await expect(page.getByText('metadata.finalizers: kubernetes.io/pvc-protection',{exact:true})).toBeVisible();
+ await expect(table).toContainText('does not establish detach progress');
+});
+
+test('shows namespace finalization reports and bounded inventory coverage',async({page})=>{
+ await page.goto('/resources/Namespace/_/staging?tab=termination');
+ await expect(page.getByText('spec.finalizers: kubernetes',{exact:true})).toBeVisible();
+ await expect(page.getByRole('table',{name:'Deletion inventory coverage'})).toBeVisible();
+ await expect(page.getByRole('table',{name:'Deletion dependency evidence'})).toContainText('catalog-preview');
+ await expect(page.getByText('Supported-kind inventory is not API discovery;',{exact:false})).toBeVisible();
+});

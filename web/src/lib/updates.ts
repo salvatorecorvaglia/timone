@@ -1,5 +1,10 @@
 export type Invalidation = { full?: boolean; scopes?: { kind: string; namespace: string }[] };
 const core = new Set([
+  'HorizontalPodAutoscaler',
+  'PodDisruptionBudget',
+  'ResourceQuota',
+  'LimitRange',
+  'EndpointSlice',
   'Node',
   'Namespace',
   'Pod',
@@ -60,6 +65,8 @@ export function shouldInvalidate(path: string, change: Invalidation): boolean {
     url.searchParams.get('namespace') ||
     '';
   return change.scopes.some((scope) => {
+    // Network paths can reference Services and source Pods in other namespaces.
+    if (route === 'resources' && parts[7] === 'network') return true;
     // Application delivery controllers are read at workspace scope, not the workload filter.
     if (
       route === 'applications' &&
@@ -67,11 +74,50 @@ export function shouldInvalidate(path: string, change: Invalidation): boolean {
     )
       return true;
     if (namespace && scope.namespace && namespace !== scope.namespace) return false;
+    if (
+      route === 'resources' &&
+      [
+        'incident',
+        'logs',
+        'storage',
+        'topology',
+        'snapshot',
+        'log-sources',
+        'scheduling',
+        'rollout',
+        'batch',
+        'efficiency',
+        'configuration',
+        'termination',
+      ].includes(parts[7] ?? '')
+    )
+      return true;
     if (route === 'resources')
       return (
         scope.kind === (parts[4] || url.searchParams.get('kind') || 'Pod') ||
-        (!!parts[4] && scope.kind === 'Event')
+        (!!parts[4] &&
+          [
+            'Event',
+            'HorizontalPodAutoscaler',
+            'PodDisruptionBudget',
+            'ResourceQuota',
+            'LimitRange',
+            'EndpointSlice',
+          ].includes(scope.kind))
       );
+    if (route === 'nodes' && parts[5] === 'maintenance')
+      return [
+        'Pod',
+        'Node',
+        'PodDisruptionBudget',
+        'PersistentVolumeClaim',
+        'PersistentVolume',
+        'Deployment',
+        'ReplicaSet',
+        'DaemonSet',
+        'StatefulSet',
+        'Job',
+      ].includes(scope.kind);
     if (route === 'serviceaccounts')
       return [
         'ServiceAccount',

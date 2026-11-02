@@ -105,7 +105,7 @@ export function Settings({ cluster }: { cluster?: Cluster }) {
               Read only
             </dd>
             <dt>Data storage</dt>
-            <dd>In-memory, no persistent database</dd>
+            <dd>In-memory by default; optional local observation archive</dd>
             <dt>External transmission</dt>
             <dd>No telemetry or third-party data forwarding</dd>
           </dl>

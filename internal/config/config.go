@@ -15,26 +15,31 @@ import (
 )
 
 type Config struct {
-	RetainedMiB         int
-	GitOps              integrations.DesiredOptions
-	Mode                string
-	Listen              string
-	TokenFile           string
-	AuthMode            string
-	TrustedProxies      []netip.Prefix
-	LoginTrustedProxies []netip.Prefix
-	AccessLog           bool
-	Token               string
-	Kubeconfig          string
-	Context             string
-	NamespaceExplicit   bool
-	Namespace           string
-	PublicURL           string
-	AllowExecAuth       bool
-	HelmDetails         bool
-	CustomResources     []string
-	Prometheus          prometheus.Options
-	Diagnostics         model.DiagnosticPolicy
+	RunbooksFile           string
+	HistoryDirectory       string
+	HistoryRetentionHours  int
+	HistoryMaxMiB          int
+	HistoryIntervalSeconds int
+	RetainedMiB            int
+	GitOps                 integrations.DesiredOptions
+	Mode                   string
+	Listen                 string
+	TokenFile              string
+	AuthMode               string
+	TrustedProxies         []netip.Prefix
+	LoginTrustedProxies    []netip.Prefix
+	AccessLog              bool
+	Token                  string
+	Kubeconfig             string
+	Context                string
+	NamespaceExplicit      bool
+	Namespace              string
+	PublicURL              string
+	AllowExecAuth          bool
+	HelmDetails            bool
+	CustomResources        []string
+	Prometheus             prometheus.Options
+	Diagnostics            model.DiagnosticPolicy
 }
 
 func Load() (Config, error) { return LoadWithOverrides(nil) }
@@ -56,6 +61,28 @@ func LoadWithOverrides(overrides map[string]string) (Config, error) {
 	}
 	c := Config{Mode: env("TIMONE_MODE", "local"), Listen: env("TIMONE_LISTEN", "127.0.0.1:8080"), Token: getenv("TIMONE_TOKEN"), Kubeconfig: getenv("KUBECONFIG"), Context: getenv("TIMONE_CONTEXT"), Namespace: getenv("TIMONE_NAMESPACE"), PublicURL: getenv("TIMONE_PUBLIC_URL")}
 	_, c.NamespaceExplicit = overrides["TIMONE_NAMESPACE"]
+	c.RunbooksFile = getenv("TIMONE_RUNBOOKS_FILE")
+	c.HistoryDirectory = getenv("TIMONE_HISTORY_DIRECTORY")
+	c.HistoryRetentionHours = 168
+	c.HistoryMaxMiB = 64
+	c.HistoryIntervalSeconds = 30
+	for _, option := range []struct {
+		name     string
+		target   *int
+		min, max int
+	}{
+		{"TIMONE_HISTORY_RETENTION_HOURS", &c.HistoryRetentionHours, 1, 720},
+		{"TIMONE_HISTORY_MAX_MIB", &c.HistoryMaxMiB, 1, 1024},
+		{"TIMONE_HISTORY_INTERVAL_SECONDS", &c.HistoryIntervalSeconds, 10, 300},
+	} {
+		if raw := getenv(option.name); raw != "" {
+			value, e := strconv.Atoi(raw)
+			if e != nil || value < option.min || value > option.max {
+				return c, fmt.Errorf("%s is outside its supported range", option.name)
+			}
+			*option.target = value
+		}
+	}
 	c.RetainedMiB = 16
 	if raw := getenv("TIMONE_RETAINED_MIB"); raw != "" {
 		value, err := strconv.Atoi(raw)

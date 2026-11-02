@@ -15,10 +15,16 @@ import {
   Terminal,
 } from 'lucide-react';
 import { stringify } from 'yaml';
+import { IncidentInvestigation, WorkloadLogInvestigation, StorageDetails } from './Investigation';
+import { SchedulingDetails, RolloutDetails, NodeMaintenanceDetails } from './Operations';
+import { TerminationDetails } from './Termination';
+import { EfficiencyDetails, ConfigurationDetails } from './ResourceInsights';
+import { NetworkDetails, BatchDetails } from './NetworkBatch';
+import { FavoriteResource } from './SavedWorkspace';
 import { ServiceAccountGrants } from './ServiceAccountGrants';
 import { EventCard } from './EventCard';
 import { ago, request, useAPI } from '../lib/api';
-import type { Detail } from '../types';
+import type { Cluster, Detail } from '../types';
 import {
   TableScroll,
   CopyButton,
@@ -30,6 +36,15 @@ import {
   Status,
   Warnings,
 } from '../components/ui';
+
+function download(filename: string, content: string, type: string) {
+  const url = URL.createObjectURL(new Blob([content], { type }));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
 
 function obj(v: unknown): Record<string, unknown> {
   return typeof v === 'object' && v !== null ? (v as Record<string, unknown>) : {};
@@ -53,7 +68,34 @@ function ResourceInvestigation({ custom = false }: { custom?: boolean }) {
   const validTab =
     ['summary', 'manifest', 'events'].includes(requestedTab) ||
     (!custom &&
-      ((builtinKind === 'Pod' && requestedTab === 'logs') ||
+      (requestedTab === 'incident' ||
+        (['Pod', 'PersistentVolumeClaim', 'Namespace'].includes(builtinKind) &&
+          requestedTab === 'termination') ||
+        (['Pod', 'Deployment', 'StatefulSet', 'DaemonSet', 'ReplicaSet', 'Job'].includes(
+          builtinKind,
+        ) &&
+          ['efficiency', 'configuration'].includes(requestedTab)) ||
+        (['Service', 'Ingress', 'HTTPRoute', 'Gateway'].includes(builtinKind) &&
+          requestedTab === 'network') ||
+        (['Job', 'CronJob'].includes(builtinKind) && requestedTab === 'batch') ||
+        (builtinKind === 'Pod' && requestedTab === 'scheduling') ||
+        (builtinKind === 'Node' && requestedTab === 'maintenance') ||
+        (['Deployment', 'StatefulSet', 'DaemonSet'].includes(builtinKind) &&
+          requestedTab === 'rollout') ||
+        ([
+          'Pod',
+          'Deployment',
+          'StatefulSet',
+          'DaemonSet',
+          'ReplicaSet',
+          'Job',
+          'PersistentVolumeClaim',
+          'PersistentVolume',
+        ].includes(builtinKind) &&
+          requestedTab === 'storage') ||
+        (['Deployment', 'StatefulSet', 'DaemonSet', 'ReplicaSet', 'Job'].includes(builtinKind) &&
+          requestedTab === 'logs') ||
+        (builtinKind === 'Pod' && requestedTab === 'logs') ||
         (builtinKind === 'ServiceAccount' && requestedTab === 'grants')));
   const tab = validTab ? requestedTab : 'summary';
   useEffect(() => {
@@ -67,16 +109,24 @@ function ResourceInvestigation({ custom = false }: { custom?: boolean }) {
       { replace: true },
     );
   }, [validTab, setParams]);
+  const cluster = useAPI<Cluster>('/api/v1/cluster');
   const [container, setContainer] = useState('');
+  const [previous, setPrevious] = useState(false);
+  const [tail, setTail] = useState('100');
+  const [since, setSince] = useState('');
+  const [follow, setFollow] = useState(false);
+  const [logSearch, setLogSearch] = useState('');
+
   const logs = useQuery({
-    queryKey: ['logs', ns, name, container],
+    queryKey: ['logs', ns, name, container, previous, tail, since],
     enabled: tab === 'logs' && kind === 'Pod' && !custom,
     queryFn: ({ signal }) =>
       request<{ logs: string }>(
-        `/api/v1/pods/${encodeURIComponent(ns)}/${encodeURIComponent(name)}/logs?container=${encodeURIComponent(container)}&tail=100`,
+        `/api/v1/pods/${encodeURIComponent(ns)}/${encodeURIComponent(name)}/logs?container=${encodeURIComponent(container)}&tail=${tail}&previous=${previous}&sinceTime=${encodeURIComponent(since ? new Date(since).toISOString() : '')}`,
         { signal },
       ),
     retry: false,
+    refetchInterval: follow && tab === 'logs' && !previous ? 2000 : false,
   });
   if (data.isPending) return <Loading />;
   if (data.error) return <ErrorState error={data.error} retry={() => void data.refetch()} />;
@@ -123,7 +173,84 @@ function ResourceInvestigation({ custom = false }: { custom?: boolean }) {
           <Clock3 size={14} />
           Created {ago(d.resource.createdAt)}
         </span>
-        <CopyButton text={`${kind}/${name}`} label="Copy reference" />
+        <div className="log-controls">
+          <FavoriteResource resource={d.resource} />
+          {!custom && (
+            <Link
+              className="button"
+              to={`/topology?${new URLSearchParams({ focusKind: kind, focusNS: ns, focusName: name, depth: '1' })}`}
+            >
+              Explore dependencies
+            </Link>
+          )}
+          {!custom && (
+            <Link
+              className="button"
+              to={`/snapshots?${new URLSearchParams({ kind, resourceNamespace: ns, name })}`}
+            >
+              Capture / compare snapshots
+            </Link>
+          )}
+          <CopyButton text={`${kind}/${name}`} label="Copy reference" />
+          <button
+            className="button"
+            onClick={() =>
+              download(
+                'investigation.json',
+                JSON.stringify(
+                  {
+                    schemaVersion: 1,
+                    cluster: cluster.data?.name,
+                    namespaceScope: cluster.data?.scope,
+                    mode: cluster.data?.mode,
+                    exportedAt: new Date().toISOString(),
+                    detail: d,
+                  },
+                  null,
+                  2,
+                ),
+                'application/json',
+              )
+            }
+          >
+            Export JSON
+          </button>
+          <button
+            className="button"
+            onClick={() =>
+              download(
+                'investigation.md',
+                [
+                  '# Kubernetes investigation',
+                  `Cluster: ${cluster.data?.name ?? 'Unavailable'}`,
+                  `Mode: ${cluster.data?.mode ?? 'Unavailable'}`,
+                  '',
+                  `Resource: ${kind}/${ns}/${name}`,
+                  `Exported: ${new Date().toISOString()}`,
+                  '',
+                  d.history,
+                  '',
+                  d.redaction,
+                  '',
+                  '## Sanitized resource',
+                  '',
+                  '```yaml',
+                  stringify(d.manifest),
+                  '```',
+                  '',
+                  '## Events',
+                  ...d.events.map((event) => JSON.stringify(event)),
+                  '',
+                  '## Coverage warnings',
+                  ...d.warnings.map((warning) => `${warning.kind}: ${warning.message}`),
+                ].join('\n'),
+                'text/markdown',
+              )
+            }
+          >
+            Export Markdown
+          </button>
+        </div>
       </div>
       <div className="tabs" role="tablist" aria-label="Resource sections">
         {[
@@ -133,8 +260,55 @@ function ResourceInvestigation({ custom = false }: { custom?: boolean }) {
           ...(kind === 'ServiceAccount' && !custom
             ? [{ id: 'grants', name: 'RBAC grants', icon: ShieldCheck }]
             : []),
-          ...(kind === 'Pod' && !custom
-            ? [{ id: 'logs', name: 'Container logs', icon: Terminal }]
+          ...(!custom && ['Service', 'Ingress', 'HTTPRoute', 'Gateway'].includes(kind)
+            ? [{ id: 'network', name: 'Network paths', icon: Layers3 }]
+            : []),
+          ...(!custom && ['Job', 'CronJob'].includes(kind)
+            ? [{ id: 'batch', name: 'Executions', icon: Clock3 }]
+            : []),
+          ...(!custom &&
+          ['Pod', 'Deployment', 'StatefulSet', 'DaemonSet', 'ReplicaSet', 'Job'].includes(kind)
+            ? [
+                { id: 'efficiency', name: 'Resource efficiency', icon: Layers3 },
+                { id: 'configuration', name: 'Configuration dependencies', icon: Braces },
+              ]
+            : []),
+          ...(!custom && ['Pod', 'PersistentVolumeClaim', 'Namespace'].includes(kind)
+            ? [{ id: 'termination', name: 'Deletion diagnostics', icon: Clock3 }]
+            : []),
+          ...(!custom ? [{ id: 'incident', name: 'Incident', icon: Clock3 }] : []),
+          ...(!custom && kind === 'Pod'
+            ? [{ id: 'scheduling', name: 'Scheduling', icon: Layers3 }]
+            : []),
+          ...(!custom && kind === 'Node'
+            ? [{ id: 'maintenance', name: 'Maintenance', icon: ShieldCheck }]
+            : []),
+          ...(!custom && ['Deployment', 'StatefulSet', 'DaemonSet'].includes(kind)
+            ? [{ id: 'rollout', name: 'Rollout', icon: Layers3 }]
+            : []),
+          ...(!custom &&
+          [
+            'Pod',
+            'Deployment',
+            'StatefulSet',
+            'DaemonSet',
+            'ReplicaSet',
+            'Job',
+            'PersistentVolumeClaim',
+            'PersistentVolume',
+          ].includes(kind)
+            ? [{ id: 'storage', name: 'Storage', icon: Layers3 }]
+            : []),
+          ...(['Pod', 'Deployment', 'StatefulSet', 'DaemonSet', 'ReplicaSet', 'Job'].includes(
+            kind,
+          ) && !custom
+            ? [
+                {
+                  id: 'logs',
+                  name: kind === 'Pod' ? 'Container logs' : 'Workload logs',
+                  icon: Terminal,
+                },
+              ]
             : []),
         ].map((t) => (
           <button
@@ -164,9 +338,66 @@ function ResourceInvestigation({ custom = false }: { custom?: boolean }) {
         ))}
       </div>
       <div role="tabpanel">
+        {!custom && tab === 'termination' && (
+          <TerminationDetails kind={kind} namespace={ns} name={name} />
+        )}
+        {!custom && tab === 'efficiency' && (
+          <EfficiencyDetails kind={kind} namespace={ns} name={name} />
+        )}
+        {!custom && tab === 'configuration' && (
+          <ConfigurationDetails kind={kind} namespace={ns} name={name} />
+        )}
+        {!custom && tab === 'network' && <NetworkDetails kind={kind} namespace={ns} name={name} />}
+        {!custom && tab === 'batch' && <BatchDetails kind={kind} namespace={ns} name={name} />}
+        {!custom && tab === 'scheduling' && <SchedulingDetails namespace={ns} name={name} />}
+        {!custom && tab === 'rollout' && <RolloutDetails kind={kind} namespace={ns} name={name} />}
+        {!custom && tab === 'maintenance' && (
+          <NodeMaintenanceDetails name={name} namespace={params.get('namespace') ?? ''} />
+        )}
+        {tab === 'incident' && !custom && (
+          <IncidentInvestigation kind={kind} namespace={ns} name={name} />
+        )}
+        {tab === 'storage' && !custom && <StorageDetails kind={kind} namespace={ns} name={name} />}
+        {tab === 'logs' && kind !== 'Pod' && !custom && (
+          <WorkloadLogInvestigation kind={kind} namespace={ns} name={name} />
+        )}
         {tab === 'grants' && kind === 'ServiceAccount' && !custom && (
           <ServiceAccountGrants namespace={ns} name={name} />
         )}
+        {tab === 'summary' && !!d.related?.length && (
+          <Panel title="Scaling, availability, quotas and endpoints">
+            {d.related.map((r) => (
+              <div key={r.id}>
+                <Link
+                  to={`/resources/${r.kind}/${encodeURIComponent(r.namespace || '_')}/${encodeURIComponent(r.name)}`}
+                >
+                  {r.kind} · {r.name}
+                </Link>
+                <span> · {r.status}</span>
+              </div>
+            ))}
+          </Panel>
+        )}
+        {tab === 'summary' &&
+          [
+            'HorizontalPodAutoscaler',
+            'PodDisruptionBudget',
+            'ResourceQuota',
+            'LimitRange',
+            'EndpointSlice',
+          ].includes(kind) && (
+            <Panel title="Operational configuration and observed status">
+              <pre className="code-block">
+                {stringify({
+                  spec: d.manifest.spec,
+                  status: d.manifest.status,
+                  addressType: d.manifest.addressType,
+                  ports: d.manifest.ports,
+                  endpoints: d.manifest.endpoints,
+                })}
+              </pre>
+            </Panel>
+          )}
         {tab === 'summary' && (
           <div className="detail-grid">
             <Panel title="Resource information">
@@ -325,7 +556,7 @@ function ResourceInvestigation({ custom = false }: { custom?: boolean }) {
         {tab === 'logs' && kind === 'Pod' && !custom && (
           <Panel
             title="Container logs"
-            subtitle="Last 100 lines, bounded to 128 KiB. Application output may contain sensitive information."
+            subtitle="Selected tail, bounded to 128 KiB. Live refresh retrieves the current tail every two seconds. Application output may contain sensitive information."
             action={
               <div className="log-controls">
                 <select
@@ -340,6 +571,57 @@ function ResourceInvestigation({ custom = false }: { custom?: boolean }) {
                     </option>
                   ))}
                 </select>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={previous}
+                    onChange={(e) => setPrevious(e.target.checked)}
+                  />{' '}
+                  Previous instance
+                </label>
+                <select
+                  aria-label="Log lines"
+                  value={tail}
+                  onChange={(e) => setTail(e.target.value)}
+                >
+                  {['100', '500', '1000'].map((n) => (
+                    <option key={n} value={n}>
+                      {n} lines
+                    </option>
+                  ))}
+                </select>
+                <label>
+                  Since{' '}
+                  <input
+                    aria-label="Logs since"
+                    type="datetime-local"
+                    value={since}
+                    onChange={(e) => setSince(e.target.value)}
+                  />
+                </label>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={follow}
+                    disabled={previous}
+                    onChange={(e) => setFollow(e.target.checked)}
+                  />{' '}
+                  Live refresh
+                </label>
+                <input
+                  aria-label="Search log lines"
+                  placeholder="Filter retrieved lines"
+                  value={logSearch}
+                  onChange={(e) => setLogSearch(e.target.value)}
+                />
+                {logs.data && (
+                  <button
+                    className="button"
+                    onClick={() => download('container.log', logs.data.logs, 'text/plain')}
+                  >
+                    Download logs
+                  </button>
+                )}
                 <button className="button" onClick={() => void logs.refetch()}>
                   Reload
                 </button>
@@ -347,6 +629,9 @@ function ResourceInvestigation({ custom = false }: { custom?: boolean }) {
               </div>
             }
           >
+            {logs.data && new TextEncoder().encode(logs.data.logs).length >= 131072 && (
+              <p className="footnote">Log output reached the 128 KiB limit and may be truncated.</p>
+            )}
             {logs.dataUpdatedAt > 0 && (
               <p className="footnote">
                 Last successful log retrieval: {new Date(logs.dataUpdatedAt).toLocaleString()}
@@ -357,7 +642,12 @@ function ResourceInvestigation({ custom = false }: { custom?: boolean }) {
             ) : logs.error ? (
               <ErrorState error={logs.error} />
             ) : (
-              <pre className="code-block logs">{logs.data.logs || 'No logs returned.'}</pre>
+              <pre className="code-block logs">
+                {logs.data.logs
+                  .split('\n')
+                  .filter((line) => line.toLowerCase().includes(logSearch.toLowerCase()))
+                  .join('\n') || 'No matching logs returned.'}
+              </pre>
             )}
           </Panel>
         )}

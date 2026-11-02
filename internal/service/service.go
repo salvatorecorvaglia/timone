@@ -109,6 +109,8 @@ func ValidateResource(kind, ns, name string) error {
 }
 
 type Service struct {
+	runbooks     []Runbook
+	archive      *ObservationArchive
 	observations *observations
 	admission    chan struct{}
 	Provider     provider.Provider
@@ -218,10 +220,12 @@ func (s *Service) Detail(ctx context.Context, kind, ns, name string) (model.Deta
 	if eventErr != nil {
 		warnings = append(warnings, model.Warning{Kind: "Event", Message: eventErr.Error()})
 	}
-	return model.Detail{Resource: model.Summarize(o), Manifest: model.Sanitize(o), Events: related, Warnings: warnings, History: "Current state only. Kubernetes events may expire; no persistent resource history.", Redaction: "Secret payloads, nested annotations, managedFields, inline GitOps configuration, HTTP probe/lifecycle header values and direct environment values are omitted or redacted. Labels, ConfigMaps, command arguments, controller messages and logs may contain sensitive operator-provided information."}, nil
+	relatedResources, operationalWarnings := s.OperationalContext(ctx, kind, ns, name)
+	warnings = append(warnings, operationalWarnings...)
+	return model.Detail{Related: relatedResources, Resource: model.Summarize(o), Manifest: model.Sanitize(o), Events: related, Warnings: warnings, History: "Current state only. Kubernetes events may expire; no persistent resource history.", Redaction: "Secret payloads, nested annotations, ControllerRevision data, managedFields, inline GitOps configuration, HTTP probe/lifecycle header values and direct environment values are omitted or redacted. Only a mirror-Pod presence marker and validated deployment revision number survive from top-level annotations. Labels, ConfigMaps, command arguments, controller messages and logs may contain sensitive operator-provided information."}, nil
 }
 
-var coreKinds = []string{"Node", "Namespace", "Pod", "Deployment", "ReplicaSet", "StatefulSet", "DaemonSet", "Job", "CronJob", "Service", "Ingress", "PersistentVolumeClaim"}
+var coreKinds = []string{"HorizontalPodAutoscaler", "PodDisruptionBudget", "ResourceQuota", "LimitRange", "EndpointSlice", "Node", "Namespace", "Pod", "Deployment", "ReplicaSet", "StatefulSet", "DaemonSet", "Job", "CronJob", "Service", "Ingress", "PersistentVolumeClaim"}
 
 func (s *Service) Snapshot(ctx context.Context, ns string, extra ...string) (model.Snapshot, error) {
 	ctx = provider.WithReadBudget(ctx, provider.InvestigationBytes)

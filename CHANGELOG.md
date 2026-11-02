@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- HPA, PodDisruptionBudget, ResourceQuota, LimitRange, and EndpointSlice inspection with related workload and Service context.
+- Resource investigations covering scheduling, rollouts, node maintenance, storage, deletion, network paths and NetworkPolicy rules, and Job and CronJob execution evidence.
+- CPU and memory efficiency analysis and ConfigMap and Secret dependency inspection without exposing payloads.
+- Incident investigations, workload log aggregation, and JSON and Markdown investigation exports; logs are downloaded separately.
+- Container log controls for previous instances, start time, bounded tails, text filtering, downloads, and optional live refresh.
+- Resource snapshots with local file comparison, saved views, resource favorites, and focused topology investigations.
+- Optional persistent observation history with configurable retention, disk budget, and sampling interval.
+- Administrator-configured HTTPS runbook links for diagnostic issues.
+
 ### Changed
 
 - Update `golang.org/x/net` to `v0.62.0`.

@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"timone/internal/model"
 	"timone/internal/provider"
+	"timone/internal/service"
 )
 
 func (a *Server) routes() http.Handler {
@@ -13,7 +14,10 @@ func (a *Server) routes() http.Handler {
 	api.HandleFunc("GET /api/v1/workspace", a.workspaceInfo)
 	api.HandleFunc("POST /api/v1/workspace", a.switchWorkspace)
 	api.HandleFunc("GET /api/v1/cluster", func(w http.ResponseWriter, r *http.Request) {
-		write(w, 200, clusterResponse{Name: s.Provider.Name(), Mode: s.Provider.Mode(), Scope: s.Provider.Namespace(), Kinds: provider.Kinds})
+		write(w, 200, clusterResponse{Key: s.ClusterKey(), Name: s.Provider.Name(), Mode: s.Provider.Mode(), Scope: s.Provider.Namespace(), Kinds: provider.Kinds})
+	})
+	api.HandleFunc("GET /api/v1/diagnostic-rules", func(w http.ResponseWriter, r *http.Request) {
+		write(w, 200, map[string]any{"ruleIDs": service.DiagnosticRuleIDs()})
 	})
 	api.HandleFunc("GET /api/v1/connection", func(w http.ResponseWriter, r *http.Request) { write(w, 200, s.Provider.Connection(r.Context())) })
 	api.HandleFunc("GET /api/v1/overview", a.overview)
@@ -50,6 +54,22 @@ func (a *Server) routes() http.Handler {
 	})
 	api.HandleFunc("GET /api/v1/resources", a.resources)
 	api.HandleFunc("GET /api/v1/resources/{kind}/{namespace}/{name}", a.detail)
+	api.HandleFunc("GET /api/v1/resources/{kind}/{namespace}/{name}/incident", a.incident)
+	api.HandleFunc("GET /api/v1/resources/Pod/{namespace}/{name}/scheduling", a.scheduling)
+	api.HandleFunc("GET /api/v1/resources/{kind}/{namespace}/{name}/rollout", a.rollout)
+	api.HandleFunc("GET /api/v1/resources/{kind}/{namespace}/{name}/network", a.network)
+	api.HandleFunc("GET /api/v1/resources/{kind}/{namespace}/{name}/efficiency", a.efficiency)
+	api.HandleFunc("GET /api/v1/resources/{kind}/{namespace}/{name}/configuration", a.configuration)
+	api.HandleFunc("GET /api/v1/resources/{kind}/{namespace}/{name}/termination", a.termination)
+	api.HandleFunc("GET /api/v1/resources/{kind}/{namespace}/{name}/batch", a.batch)
+	api.HandleFunc("GET /api/v1/nodes/{name}/maintenance", a.maintenance)
+	api.HandleFunc("GET /api/v1/resources/{kind}/{namespace}/{name}/topology", a.focusedTopology)
+	api.HandleFunc("GET /api/v1/resources/{kind}/{namespace}/{name}/snapshot", a.capture)
+	api.HandleFunc("GET /api/v1/history/status", func(w http.ResponseWriter, r *http.Request) { write(w, 200, s.ArchiveStatus()) })
+	api.HandleFunc("GET /api/v1/history", a.archivedHistory)
+	api.HandleFunc("GET /api/v1/resources/{kind}/{namespace}/{name}/logs", a.workloadLogs)
+	api.HandleFunc("GET /api/v1/resources/{kind}/{namespace}/{name}/log-sources", a.logSources)
+	api.HandleFunc("GET /api/v1/resources/{kind}/{namespace}/{name}/storage", a.storage)
 	api.HandleFunc("GET /api/v1/serviceaccounts/{namespace}/{name}/grants", a.serviceAccountGrants)
 	api.HandleFunc("GET /api/v1/custom-resource-types", func(w http.ResponseWriter, r *http.Request) {
 		v, e := s.CustomTypes(r.Context())

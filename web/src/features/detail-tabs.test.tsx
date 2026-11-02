@@ -3,7 +3,7 @@ import { expect, it } from 'vitest';
 import { App } from '../app/App';
 import { mockAPI, show } from './test-helpers';
 
-it.each(['logs', 'grants', 'invalid'])(
+it.each(['grants', 'invalid'])(
   'normalizes unsupported Deployment tab %s to Overview',
   async (tab) => {
     mockAPI();
