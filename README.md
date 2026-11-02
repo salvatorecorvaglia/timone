@@ -8,7 +8,7 @@
 
 **Timone** helps you investigate cluster health, understand resource relationships, and diagnose workload issues using your existing Kubernetes access. A Go backend serves an embedded React interface and connects to one selected cluster at a time.
 
-## Features
+## Features ✨
 
 - Cluster overview, resource search, namespace filters, events, and workload diagnostics.
 - Resource details and topology views for exploring dependencies and networking.
@@ -27,7 +27,7 @@
 
 Visibility depends on the configured Kubernetes identity and its RBAC permissions. Timone does not modify cluster resources; suggested remediation commands remain actions for you to review and run separately.
 
-## Quick start from source
+## Quick Start 🚀
 
 Install Go 1.27.0 or newer, Node.js 24 or newer, and pnpm 12.16.1 (the version pinned in `web/package.json`). Run these commands from the repository root:
 
@@ -134,50 +134,24 @@ pnpm --dir desktop start
 
 On Windows, name the backend `timone.exe`. Desktop packaging is configured in [desktop/builder.cjs](desktop/builder.cjs); `pnpm --dir desktop run dist` builds the configured installers for the host platform.
 
-## Development and tests
-
-For a frontend development server with hot reload, start the backend and frontend in separate terminals after the initial frontend build:
-
-```sh
-TIMONE_ENV=development TIMONE_MODE=demo \
-  TIMONE_PUBLIC_URL=http://127.0.0.1:5173 go run ./cmd/timone
-```
-
-```sh
-pnpm --dir web run dev
-```
-
-Open <http://127.0.0.1:5173>. Vite proxies `/api` and `/mcp` to the backend on port 8080.
-
-Core checks:
-
-```sh
-go test ./...
-go vet ./...
-pnpm --dir web run typecheck
-pnpm --dir web run lint
-pnpm --dir web run test
-pnpm --dir web run build
-```
-
 ---
 
-## 🤝 Contributing
+## Contributing 🤝
 
 Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
-## 📜 Changelog
+## Changelog 📜
 
 Detailed release history and version changes can be found in [CHANGELOG.md](CHANGELOG.md).
 
-## 🔐 Security
+## Security 🔐
 
 If you discover a security vulnerability, please see our [Security Policy](SECURITY.md).
 
-## 📝 License
+## License 📝
 
 Distributed under the MIT License. See [LICENSE](LICENSE) for more information.
 
----
+## Author ✍️
 
-**Author**: [Salvatore Corvaglia](https://github.com/salvatorecorvaglia)
+[Salvatore Corvaglia](https://github.com/salvatorecorvaglia)
