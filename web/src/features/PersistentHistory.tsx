@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { request, useAPI } from '../lib/api';
-import { useInvestigationWindow } from './Investigation';
+import { useInvestigationWindow } from '../lib/useInvestigationWindow';
 import {
   Empty,
   ErrorState,

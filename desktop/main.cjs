@@ -87,19 +87,21 @@ async function connect(input) {
     const binary = path.join(app.isPackaged ? process.resourcesPath : path.join(__dirname, 'resources'), executable);
     candidate = new Backend(binary, next, { env: { ...process.env, TIMONE_ENV: app.isPackaged ? 'production' : 'development' } });
     backend = candidate;
+    candidate.on('stopped', () => {
+      if (backend !== candidate || quitting || busy) return;
+      backend = undefined;
+      void window.loadFile(welcomePath).then(() => {
+        if (!quitting) dialog.showMessageBox(window, { type: 'error', title: 'Connection stopped', message: 'The Timone backend stopped. Choose a connection to start it again.' });
+      });
+    });
     await candidate.ready;
     await authenticate();
     // Settings contain only connection preferences, never credentials.
     await saveSettings(app.getPath('userData'), next);
     settings = next;
     await window.loadURL(candidate.origin);
-    candidate.on('stopped', () => {
-      if (backend !== candidate || quitting) return;
-      backend = undefined;
-      void window.loadFile(welcomePath).then(() => {
-        if (!quitting) dialog.showMessageBox(window, { type: 'error', title: 'Connection stopped', message: 'The Timone backend stopped. Choose a connection to start it again.' });
-      });
-    });
+    if (candidate.child.exitCode !== null || candidate.child.signalCode !== null) throw new Error("The backend stopped during connection setup.");
+
   } catch (error) {
     if (candidate) await candidate.stop();
     if (backend === candidate) backend = undefined;

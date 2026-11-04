@@ -17,12 +17,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Resource snapshots with local file comparison, saved views, resource favorites, and focused topology investigations.
 - Optional persistent observation history with configurable retention, disk budget, and sampling interval.
 - Administrator-configured HTTPS runbook links for diagnostic issues.
+- Required disposable Kubernetes acceptance checks in CI, with real restricted-access fixtures reused by browser tests.
+- Browser overview performance checks, concurrent overview allocation benchmarks, desktop failure-path coverage, and macOS update and rollback integration tests.
 
 ### Changed
 
 - Update `golang.org/x/net` to `v0.62.0`.
 - Always use ad-hoc macOS desktop signing and disable notarization in the desktop builder.
 - Refresh the application logo, README and contribution guide.
+- Require Go 1.27.3 and align the container build toolchain with the module.
+- Update electron-builder to 26.18.0 and use minimatch 11.0.1 with a compatibility adapter for legacy desktop packaging callers.
+- Share workload log controls, investigation time-window handling, download helpers, and resource-tab capability rules across investigation views.
+
+### Fixed
+
+- Reject malformed query encoding, unsupported or duplicate query parameters, and invalid boolean sort directions in resource queries.
+- Count individual Kubernetes resource reads toward the sanitized response-byte budget.
+- Recover from backend exits during desktop connection setup and return to the connection screen after unexpected backend shutdowns.
+- Fail stalled macOS update downloads after 30 seconds and cap total download time at 15 minutes, cleaning up download timers on completion or failure.
+- Keep snapshot resource selections synchronized with URL and namespace changes, ignore stale file imports, and reuse snapshot comparisons until their inputs change.
+- Use a keyboard-accessible workspace-switching dialog with focus management and theme-aware colors for incident history charts.
 
 ## [1.2.0] - 2026-10-27
 

@@ -4,7 +4,7 @@ import { expect, it, vi } from 'vitest';
 import { App } from '../app/App';
 import { SavedWorkspaceProvider, FavoriteResource, SavedWorkspace } from './SavedWorkspace';
 import { RunbookLinks } from './RunbookLinks';
-import { WorkloadLogInvestigation } from './Investigation';
+import { WorkloadLogInvestigation } from './WorkloadLogs';
 import type { Cluster, Detail, Issue } from '../types';
 import { fixtures, mockAPI, show } from './test-helpers';
 

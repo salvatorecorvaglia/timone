@@ -164,15 +164,25 @@ function downloadAsset(url, destPath, expectedSize, onProgress) {
     let received = 0;
     let lastReport = 0;
     let settled = false;
+    let idleTimer;
+    const totalTimer = setTimeout(() => fail(new Error('Update download timed out.')), 15 * 60 * 1000);
+    const touch = () => {
+      clearTimeout(idleTimer);
+      idleTimer = setTimeout(() => fail(new Error('Update download stalled.')), 30000);
+    };
+    const clearTimers = () => { clearTimeout(idleTimer); clearTimeout(totalTimer); };
+
 
     const fail = (err) => {
       if (settled) return;
       settled = true;
+      clearTimers();
       file.destroy();
       request.abort();
       rejectPromise(err instanceof Error ? err : new Error(String(err)));
     };
 
+    touch();
     file.on('error', fail);
     request.on('error', fail);
 
@@ -189,6 +199,7 @@ function downloadAsset(url, destPath, expectedSize, onProgress) {
 
       response.on('data', (chunk) => {
         if (settled) return;
+        touch();
         received += chunk.length;
         // The feed states the exact size; anything longer is not the asset the
         // checksum describes, so stop rather than filling the disk.
@@ -220,6 +231,7 @@ function downloadAsset(url, destPath, expectedSize, onProgress) {
         file.end(() => {
           if (settled) return;
           settled = true;
+          clearTimers();
           resolvePromise(hash.digest('base64'));
         });
       });

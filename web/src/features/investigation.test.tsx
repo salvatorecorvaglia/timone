@@ -1,6 +1,7 @@
+import { WorkloadLogInvestigation } from './WorkloadLogs';
 import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { expect, it } from 'vitest';
-import { IncidentInvestigation, StorageDetails, WorkloadLogInvestigation } from './Investigation';
+import { IncidentInvestigation, StorageDetails } from './Investigation';
 import { mockAPI, show } from './test-helpers';
 
 const target = { kind: 'Deployment', namespace: 'production', name: 'checkout-api' };

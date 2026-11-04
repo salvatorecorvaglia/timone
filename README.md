@@ -29,7 +29,7 @@ Visibility depends on the configured Kubernetes identity and its RBAC permission
 
 ## Quick Start 🚀
 
-Install Go 1.27.0 or newer, Node.js 24 or newer, and pnpm 12.16.1 (the version pinned in `web/package.json`). Run these commands from the repository root:
+Install Go 1.27.3 or newer, Node.js 24 or newer, and pnpm 12.16.1 (the version pinned in `web/package.json`). Run these commands from the repository root:
 
 ```sh
 go mod download

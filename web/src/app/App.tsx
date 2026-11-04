@@ -1,3 +1,4 @@
+import * as Dialog from '@radix-ui/react-dialog';
 import { SavedWorkspaceProvider, SaveCurrentView } from '../features/SavedWorkspace';
 import { Sidebar } from './Sidebar';
 import {
@@ -121,34 +122,37 @@ function Shell() {
             >
               <Menu size={19} />
             </button>
-            <div className="cluster-switch-wrap">
-              <button
-                className="cluster-switch"
-                aria-expanded={clusterOpen}
-                onClick={() => setClusterOpen(!clusterOpen)}
-              >
-                <span className="cluster-icon">
-                  <Box size={16} />
-                </span>
-                <strong>{cluster.data?.name ?? 'Cluster'}</strong>
-                <span className="tag">
-                  {cluster.data ? (cluster.data.mode === 'demo' ? 'DEMO' : 'REAL') : '…'}
-                </span>
-                <ChevronDown size={14} />
-              </button>
-              {clusterOpen && (
-                <div className="cluster-popover">
-                  <span className="eyebrow">ACTIVE CLUSTER</span>
-                  <strong>{cluster.data?.name}</strong>
-                  <p>
-                    {cluster.data?.mode === 'demo'
-                      ? 'An isolated, simulated environment.'
-                      : 'Uses the server’s configured credentials. API reachability is reported separately.'}
-                  </p>
-                  <WorkspaceSwitcher close={() => setClusterOpen(false)} />
-                </div>
-              )}
-            </div>
+            <Dialog.Root open={clusterOpen} onOpenChange={setClusterOpen}>
+              <div className="cluster-switch-wrap">
+                <Dialog.Trigger asChild>
+                  <button className="cluster-switch" aria-expanded={clusterOpen}>
+                    <span className="cluster-icon">
+                      <Box size={16} />
+                    </span>
+                    <strong>{cluster.data?.name ?? 'Cluster'}</strong>
+                    <span className="tag">
+                      {cluster.data ? (cluster.data.mode === 'demo' ? 'DEMO' : 'REAL') : '…'}
+                    </span>
+                    <ChevronDown size={14} />
+                  </button>
+                </Dialog.Trigger>
+                <Dialog.Portal>
+                  <Dialog.Overlay className="search-backdrop" />
+                  <Dialog.Content className="search-dialog" aria-describedby={undefined}>
+                    <Dialog.Title>Switch workspace</Dialog.Title>
+                    <span className="eyebrow">ACTIVE CLUSTER</span>
+                    <strong>{cluster.data?.name}</strong>
+                    <p>
+                      {cluster.data?.mode === 'demo'
+                        ? 'An isolated, simulated environment.'
+                        : 'Uses the server’s configured credentials. API reachability is reported separately.'}
+                    </p>
+                    <WorkspaceSwitcher close={() => setClusterOpen(false)} />
+                    <Dialog.Close className="button">Close</Dialog.Close>
+                  </Dialog.Content>
+                </Dialog.Portal>
+              </div>
+            </Dialog.Root>
             <span className="header-divider" />
             <span className="header-location">{title}</span>
             <button

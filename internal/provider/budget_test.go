@@ -36,3 +36,10 @@ func TestCachedCollectionCannotBypassInvestigationBudget(t *testing.T) {
 		t.Fatal("cache bypassed collection budget", err)
 	}
 }
+
+func TestGetCannotBypassInvestigationBudget(t *testing.T) {
+	k, _ := clientgoCluster(fakeObject("Pod", "production", "api", "1"))
+	if _, err := k.Get(WithReadBudget(context.Background(), 1), "Pod", "production", "api"); Status(err) != 413 {
+		t.Fatal("GET bypassed investigation budget", err)
+	}
+}

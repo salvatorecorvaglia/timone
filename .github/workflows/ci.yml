@@ -198,6 +198,39 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+  live-cluster:
+    name: Disposable Kubernetes acceptance
+    needs: frontend
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16
+        with:
+          go-version-file: go.mod
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: embedded-frontend
+          path: web/dist
+      - name: Install pinned Kind
+        run: go install sigs.k8s.io/kind@v0.33.0
+      - name: Test both supported Kubernetes versions with restricted credentials
+        env:
+          TIMONE_ACCEPTANCE_ARTIFACTS: ${{ runner.temp }}/timone-live-artifacts
+        run: sh tests/cluster/run.sh
+      - name: Retain real restricted overview fixtures
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: live-cluster-fixtures
+          path: ${{ runner.temp }}/timone-live-artifacts/
+          if-no-files-found: error
+          retention-days: 14
+      - name: Clean up disposable cluster
+        if: always()
+        run: kind delete cluster --name timone-acceptance
+
   security:
     name: Dependency security
     needs: frontend
@@ -235,7 +268,7 @@ jobs:
   checks:
     name: Build and test
     if: ${{ always() }}
-    needs: [workflows, frontend, integration, packaging, security, archives, browser, desktop]
+    needs: [workflows, frontend, integration, packaging, security, archives, browser, desktop, live-cluster]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -250,10 +283,11 @@ jobs:
           DESKTOP_REQUIRED: ${{ inputs.release || false }}
           BROWSER_RESULT: ${{ needs.browser.result }}
           SECURITY_RESULT: ${{ needs.security.result }}
+          LIVE_RESULT: ${{ needs.live-cluster.result }}
         run: |
           printf '| Check | Result |\n| --- | --- |\n' >> "$GITHUB_STEP_SUMMARY"
           failed=0
-          for check in WORKFLOWS FRONTEND INTEGRATION PACKAGING SECURITY ARCHIVES BROWSER DESKTOP; do
+          for check in WORKFLOWS FRONTEND INTEGRATION PACKAGING SECURITY ARCHIVES BROWSER DESKTOP LIVE; do
             variable="${check}_RESULT"
             result="${!variable}"
             if [[ "$check" == DESKTOP && "$DESKTOP_REQUIRED" != true && "$result" == skipped ]]; then result=success; fi
@@ -371,7 +405,7 @@ jobs:
 
   browser:
     name: Browser and accessibility tests
-    needs: frontend
+    needs: [frontend, live-cluster]
     runs-on: ubuntu-24.04
     container:
       image: mcr.microsoft.com/playwright:v1.64.1-noble
@@ -400,7 +434,15 @@ jobs:
           name: browser-application
           path: bin
       - run: chmod +x bin/timone
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: live-cluster-fixtures
+          path: live-cluster
+      - name: Verify live fixture exists
+        run: test -s live-cluster/1.37.0/live-overview.json
       - run: pnpm --dir web run test:browser
+        env:
+          TIMONE_LIVE_OVERVIEW: live-cluster/1.37.0/live-overview.json
       - name: Retain browser reports
         if: ${{ always() }}
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f

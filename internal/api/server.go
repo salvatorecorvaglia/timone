@@ -6,7 +6,9 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"net/url"
 	"strconv"
+	"strings"
 	"timone/internal/auth"
 
 	"timone/internal/config"
@@ -90,7 +92,27 @@ func respond(w http.ResponseWriter, v any, e error) {
 	write(w, 200, v)
 }
 func query(r *http.Request) (service.Query, error) {
-	v := r.URL.Query()
+	v, parseErr := url.ParseQuery(r.URL.RawQuery)
+	if parseErr != nil {
+		return service.Query{}, &provider.Error{Code: 400, Message: "Invalid query encoding"}
+	}
+	for key, values := range v {
+		allowed := false
+		switch key {
+		case "kind", "namespace", "resource", "since", "until", "search", "status", "phase", "sort", "desc", "limit", "offset":
+			allowed = true
+		case "group":
+			allowed = r.URL.Path == "/api/v1/topology"
+		case "version":
+			allowed = strings.HasPrefix(r.URL.Path, "/api/v1/custom-resources/")
+		}
+		if !allowed || len(values) != 1 {
+			return service.Query{}, &provider.Error{Code: 400, Message: "Unsupported or duplicate query parameter"}
+		}
+	}
+	if v.Has("desc") && v.Get("desc") != "true" && v.Get("desc") != "false" {
+		return service.Query{}, &provider.Error{Code: 400, Message: "Invalid desc"}
+	}
 	q := service.Query{Kind: v.Get("kind"), Namespace: v.Get("namespace"), Resource: v.Get("resource"), Since: v.Get("since"), Until: v.Get("until"), Search: v.Get("search"), Status: v.Get("status"), Phase: v.Get("phase"), Sort: v.Get("sort"), Desc: v.Get("desc") == "true"}
 	for _, p := range []struct {
 		key  string

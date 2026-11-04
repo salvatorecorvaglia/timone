@@ -1,3 +1,4 @@
+import { chartColors } from '../lib/chartColors';
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -16,14 +17,6 @@ import { historyRows } from '../lib/history';
 import type { HistoryCapability, MetricHistory as History, HistorySeries } from '../types';
 import { TableScroll, Empty, ErrorState, Loading, Panel, Warnings } from '../components/ui';
 
-const colors = [
-  'var(--healthy)',
-  'var(--blue)',
-  'var(--warning)',
-  'var(--critical)',
-  'var(--chart-purple)',
-  'var(--chart-cyan)',
-];
 export function MetricsHistory({ namespace }: { namespace: string }) {
   const [params] = useSearchParams();
   const key = [
@@ -270,7 +263,7 @@ function HistoryChart({ metric, history }: { metric: string; history: History })
                 type="linear"
                 dataKey={`series${i}`}
                 name={s.container || history.resource.name}
-                stroke={colors[i % colors.length]}
+                stroke={chartColors[i % chartColors.length]}
                 dot={false}
                 connectNulls={false}
                 isAnimationActive={false}

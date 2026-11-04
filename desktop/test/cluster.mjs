@@ -50,7 +50,7 @@ try {
   await page.locator('.cluster-switch').click();
   await page.getByLabel('Kubeconfig context').selectOption('desktop-b');
   await page.getByLabel('Workspace namespace ceiling').fill('timone-desktop-b');
-  await page.locator('.cluster-popover input[type="checkbox"]').check();
+  await page.getByRole('dialog', { name: 'Switch workspace' }).getByRole('checkbox', { name: 'Confirm workspace reset' }).check();
   await page.getByRole('button', { name: 'Switch workspace', exact: true }).click();
   await expect.poll(async () => (await read('/api/v1/cluster')).name, { timeout: 30000 }).toBe('desktop-b');
   await expect.poll(() => containsService('desktop-proof-b'), { timeout: 15000 }).toBe(true);

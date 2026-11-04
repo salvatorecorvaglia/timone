@@ -26,7 +26,7 @@ for (const theme of ['dark', 'light']) {
       await page.goto('/');
       await expect(page.getByRole('heading', { name: 'Cluster overview' })).toBeVisible();
       const reports = [];
-      for (const route of ['/', '/resources', '/applications', '/custom-resources', '/issues', '/events', '/metrics', '/topology', '/audit', '/gitops', '/settings']) {
+      for (const route of ['/', '/resources', '/applications', '/custom-resources', '/issues', '/events', '/metrics', '/topology', '/audit', '/gitops', '/settings', '/snapshots', '/history']) {
         await page.goto(route);
         await expect(page.locator('main h1')).toBeVisible();
         await expect(page.locator('.loading')).toHaveCount(0);
@@ -103,4 +103,18 @@ test('renders coverage from the actual restricted live-cluster response', async 
   await coverage.locator('summary').click();
   for (const warning of response.warnings) await expect(coverage).toContainText(warning.kind);
   await expect(page.getByRole('heading', { name: 'Cluster overview' })).toBeVisible();
+});
+
+test('workspace dialog supports keyboard dismissal and restores trigger focus', async ({ page }) => {
+  await page.goto('/');
+  const trigger = page.locator('.cluster-switch');
+  await expect(trigger).toBeVisible();
+  await trigger.focus();
+  await page.keyboard.press('Enter');
+  const dialog = page.getByRole('dialog', { name: 'Switch workspace' });
+  await expect(dialog).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Close', exact: true })).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+  await expect(trigger).toBeFocused();
 });

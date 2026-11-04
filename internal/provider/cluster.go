@@ -544,7 +544,15 @@ func (k *cluster) Get(ctx context.Context, kind, ns, name string) (model.Object,
 		return nil, safeError(e)
 	}
 	o.SetKind(kind)
-	return model.Sanitize(model.Object(o.Object)), nil
+	clean := model.Sanitize(model.Object(o.Object))
+	encoded, err := json.Marshal(clean)
+	if err != nil {
+		return nil, safeError(err)
+	}
+	if err := consumeReadBudget(ctx, len(encoded)); err != nil {
+		return nil, err
+	}
+	return clean, nil
 }
 func (k *cluster) Events(ctx context.Context, ns string) ([]model.Event, error) {
 	items, truncated, e := k.list(ctx, eventKind, ns)

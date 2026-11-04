@@ -1,3 +1,6 @@
+import { WorkloadLogInvestigation } from './WorkloadLogs';
+import { supportsResourceTab } from '../lib/resourceCapabilities';
+import { saveInvestigation as download } from '../lib/download';
 import { ScopedLink as Link } from '../components/navigation';
 import { useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
@@ -15,7 +18,7 @@ import {
   Terminal,
 } from 'lucide-react';
 import { stringify } from 'yaml';
-import { IncidentInvestigation, WorkloadLogInvestigation, StorageDetails } from './Investigation';
+import { IncidentInvestigation, StorageDetails } from './Investigation';
 import { SchedulingDetails, RolloutDetails, NodeMaintenanceDetails } from './Operations';
 import { TerminationDetails } from './Termination';
 import { EfficiencyDetails, ConfigurationDetails } from './ResourceInsights';
@@ -37,15 +40,6 @@ import {
   Warnings,
 } from '../components/ui';
 
-function download(filename: string, content: string, type: string) {
-  const url = URL.createObjectURL(new Blob([content], { type }));
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  link.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
 function obj(v: unknown): Record<string, unknown> {
   return typeof v === 'object' && v !== null ? (v as Record<string, unknown>) : {};
 }
@@ -65,38 +59,7 @@ function ResourceInvestigation({ custom = false }: { custom?: boolean }) {
   );
   const kind = custom ? (data.data?.resource.kind ?? 'Custom resource') : builtinKind;
   const requestedTab = params.get('tab') ?? 'summary';
-  const validTab =
-    ['summary', 'manifest', 'events'].includes(requestedTab) ||
-    (!custom &&
-      (requestedTab === 'incident' ||
-        (['Pod', 'PersistentVolumeClaim', 'Namespace'].includes(builtinKind) &&
-          requestedTab === 'termination') ||
-        (['Pod', 'Deployment', 'StatefulSet', 'DaemonSet', 'ReplicaSet', 'Job'].includes(
-          builtinKind,
-        ) &&
-          ['efficiency', 'configuration'].includes(requestedTab)) ||
-        (['Service', 'Ingress', 'HTTPRoute', 'Gateway'].includes(builtinKind) &&
-          requestedTab === 'network') ||
-        (['Job', 'CronJob'].includes(builtinKind) && requestedTab === 'batch') ||
-        (builtinKind === 'Pod' && requestedTab === 'scheduling') ||
-        (builtinKind === 'Node' && requestedTab === 'maintenance') ||
-        (['Deployment', 'StatefulSet', 'DaemonSet'].includes(builtinKind) &&
-          requestedTab === 'rollout') ||
-        ([
-          'Pod',
-          'Deployment',
-          'StatefulSet',
-          'DaemonSet',
-          'ReplicaSet',
-          'Job',
-          'PersistentVolumeClaim',
-          'PersistentVolume',
-        ].includes(builtinKind) &&
-          requestedTab === 'storage') ||
-        (['Deployment', 'StatefulSet', 'DaemonSet', 'ReplicaSet', 'Job'].includes(builtinKind) &&
-          requestedTab === 'logs') ||
-        (builtinKind === 'Pod' && requestedTab === 'logs') ||
-        (builtinKind === 'ServiceAccount' && requestedTab === 'grants')));
+  const validTab = supportsResourceTab(builtinKind, requestedTab, custom);
   const tab = validTab ? requestedTab : 'summary';
   useEffect(() => {
     if (validTab) return;
@@ -257,85 +220,48 @@ function ResourceInvestigation({ custom = false }: { custom?: boolean }) {
           { id: 'summary', name: 'Overview', icon: FileText },
           { id: 'manifest', name: custom ? 'Observed YAML' : 'Manifest', icon: Code2 },
           { id: 'events', name: `Events (${d.events.length})`, icon: Clock3 },
-          ...(kind === 'ServiceAccount' && !custom
-            ? [{ id: 'grants', name: 'RBAC grants', icon: ShieldCheck }]
-            : []),
-          ...(!custom && ['Service', 'Ingress', 'HTTPRoute', 'Gateway'].includes(kind)
-            ? [{ id: 'network', name: 'Network paths', icon: Layers3 }]
-            : []),
-          ...(!custom && ['Job', 'CronJob'].includes(kind)
-            ? [{ id: 'batch', name: 'Executions', icon: Clock3 }]
-            : []),
-          ...(!custom &&
-          ['Pod', 'Deployment', 'StatefulSet', 'DaemonSet', 'ReplicaSet', 'Job'].includes(kind)
-            ? [
-                { id: 'efficiency', name: 'Resource efficiency', icon: Layers3 },
-                { id: 'configuration', name: 'Configuration dependencies', icon: Braces },
-              ]
-            : []),
-          ...(!custom && ['Pod', 'PersistentVolumeClaim', 'Namespace'].includes(kind)
-            ? [{ id: 'termination', name: 'Deletion diagnostics', icon: Clock3 }]
-            : []),
-          ...(!custom ? [{ id: 'incident', name: 'Incident', icon: Clock3 }] : []),
-          ...(!custom && kind === 'Pod'
-            ? [{ id: 'scheduling', name: 'Scheduling', icon: Layers3 }]
-            : []),
-          ...(!custom && kind === 'Node'
-            ? [{ id: 'maintenance', name: 'Maintenance', icon: ShieldCheck }]
-            : []),
-          ...(!custom && ['Deployment', 'StatefulSet', 'DaemonSet'].includes(kind)
-            ? [{ id: 'rollout', name: 'Rollout', icon: Layers3 }]
-            : []),
-          ...(!custom &&
-          [
-            'Pod',
-            'Deployment',
-            'StatefulSet',
-            'DaemonSet',
-            'ReplicaSet',
-            'Job',
-            'PersistentVolumeClaim',
-            'PersistentVolume',
-          ].includes(kind)
-            ? [{ id: 'storage', name: 'Storage', icon: Layers3 }]
-            : []),
-          ...(['Pod', 'Deployment', 'StatefulSet', 'DaemonSet', 'ReplicaSet', 'Job'].includes(
-            kind,
-          ) && !custom
-            ? [
-                {
-                  id: 'logs',
-                  name: kind === 'Pod' ? 'Container logs' : 'Workload logs',
-                  icon: Terminal,
-                },
-              ]
-            : []),
-        ].map((t) => (
-          <button
-            role="tab"
-            aria-selected={tab === t.id}
-            tabIndex={tab === t.id ? 0 : -1}
-            onKeyDown={(e) => {
-              if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
-                const buttons = Array.from(
-                  e.currentTarget.parentElement!.querySelectorAll<HTMLButtonElement>('[role=tab]'),
-                );
-                const i = buttons.indexOf(e.currentTarget);
-                const next =
-                  buttons[
-                    (i + (e.key === 'ArrowRight' ? 1 : -1) + buttons.length) % buttons.length
-                  ];
-                next.click();
-                next.focus();
-              }
-            }}
-            key={t.id}
-            onClick={() => setParams({ ...Object.fromEntries(params), tab: t.id })}
-          >
-            <t.icon size={14} />
-            {t.name}
-          </button>
-        ))}
+          { id: 'grants', name: 'RBAC grants', icon: ShieldCheck },
+          { id: 'network', name: 'Network paths', icon: Layers3 },
+          { id: 'batch', name: 'Executions', icon: Clock3 },
+          { id: 'efficiency', name: 'Resource efficiency', icon: Layers3 },
+          { id: 'configuration', name: 'Configuration dependencies', icon: Braces },
+          { id: 'termination', name: 'Deletion diagnostics', icon: Clock3 },
+          { id: 'incident', name: 'Incident', icon: Clock3 },
+          { id: 'scheduling', name: 'Scheduling', icon: Layers3 },
+          { id: 'maintenance', name: 'Maintenance', icon: ShieldCheck },
+          { id: 'rollout', name: 'Rollout', icon: Layers3 },
+          { id: 'storage', name: 'Storage', icon: Layers3 },
+          { id: 'logs', name: kind === 'Pod' ? 'Container logs' : 'Workload logs', icon: Terminal },
+        ]
+          .filter((t) => supportsResourceTab(kind, t.id, custom))
+          .map((t) => (
+            <button
+              role="tab"
+              aria-selected={tab === t.id}
+              tabIndex={tab === t.id ? 0 : -1}
+              onKeyDown={(e) => {
+                if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+                  const buttons = Array.from(
+                    e.currentTarget.parentElement!.querySelectorAll<HTMLButtonElement>(
+                      '[role=tab]',
+                    ),
+                  );
+                  const i = buttons.indexOf(e.currentTarget);
+                  const next =
+                    buttons[
+                      (i + (e.key === 'ArrowRight' ? 1 : -1) + buttons.length) % buttons.length
+                    ];
+                  next.click();
+                  next.focus();
+                }
+              }}
+              key={t.id}
+              onClick={() => setParams({ ...Object.fromEntries(params), tab: t.id })}
+            >
+              <t.icon size={14} />
+              {t.name}
+            </button>
+          ))}
       </div>
       <div role="tabpanel">
         {!custom && tab === 'termination' && (

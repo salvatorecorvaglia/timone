@@ -3,3 +3,7 @@ allowBuilds:
   electron-winstaller: false
 minimumReleaseAgeExclude:
   - electron@45.0.0
+# Modern callers use named exports; legacy callers need a callable CJS export.
+overrides:
+  'minimatch@<9': 'file:compat/minimatch'
+  'minimatch@>=9 <11.0.1': '11.0.1'

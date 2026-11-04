@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { request } from '../lib/api';
 import { compareSnapshots, parseSnapshot, type ResourceSnapshot } from '../lib/snapshots';
-import { saveInvestigation } from './Investigation';
+import { saveInvestigation } from '../lib/download';
 import { ErrorState, PageTitle, Panel, TableScroll, Warnings } from '../components/ui';
 
 export function Snapshots({ namespace }: { namespace: string }) {
@@ -15,21 +15,30 @@ export function Snapshots({ namespace }: { namespace: string }) {
   const [after, setAfter] = useState<ResourceSnapshot>();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<Error>();
-  let comparison: ReturnType<typeof compareSnapshots> | undefined;
-  let comparisonError: Error | undefined;
-  try {
-    if (before && after) comparison = compareSnapshots(before, after);
-  } catch (e) {
-    comparisonError = e instanceof Error ? e : new Error('Comparison failed');
-  }
+  useEffect(() => {
+    setKind(params.get('kind') ?? 'Deployment');
+    setScope(params.get('resourceNamespace') ?? namespace);
+    setName(params.get('name') ?? '');
+  }, [params, namespace]);
+  const imports = useRef({ before: 0, after: 0 });
+  const { comparison, comparisonError } = useMemo(() => {
+    try {
+      return { comparison: before && after ? compareSnapshots(before, after) : undefined };
+    } catch (e) {
+      return { comparisonError: e instanceof Error ? e : new Error('Comparison failed') };
+    }
+  }, [before, after]);
   const load = async (file: File | undefined, side: 'before' | 'after') => {
     if (!file) return;
+    const generation = ++imports.current[side];
     setError(undefined);
     try {
       if (file.size > 2 * 1024 * 1024) throw new Error('Snapshot exceeds 2 MiB.');
       const parsed = parseSnapshot(await file.text());
+      if (generation !== imports.current[side]) return;
       (side === 'before' ? setBefore : setAfter)(parsed);
     } catch (e) {
+      if (generation !== imports.current[side]) return;
       (side === 'before' ? setBefore : setAfter)(undefined);
       setError(e instanceof Error ? e : new Error('Cannot read snapshot'));
     }

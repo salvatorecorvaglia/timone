@@ -8,7 +8,8 @@ COPY resources/ /src/resources/
 COPY desktop/palette.css /src/desktop/palette.css
 RUN pnpm run build
 
-FROM --platform=$BUILDPLATFORM golang:1.26.10-alpine AS backend
+FROM --platform=$BUILDPLATFORM golang:1.27.3-alpine AS backend
+ENV GOTOOLCHAIN=local
 ARG TARGETOS
 ARG TARGETARCH
 WORKDIR /src
