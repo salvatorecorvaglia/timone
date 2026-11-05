@@ -190,3 +190,50 @@ jobs:
             exit 0
           fi
           python3 scripts/publish_homebrew.py --formula release/timone.rb
+
+  docker:
+    name: Publish tested Docker Hub images
+    needs: [quality, publish]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      IMAGE: corvaglia91/timone
+      RELEASE_TAG: ${{ github.ref_name }}
+    steps:
+      - name: Verify Docker Hub credentials
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          test "$DOCKERHUB_USERNAME" = corvaglia91 || { echo 'Set DOCKERHUB_USERNAME to corvaglia91.' >&2; exit 1; }
+          test -n "$DOCKERHUB_TOKEN" || { echo 'Set DOCKERHUB_TOKEN with write access to corvaglia91/timone.' >&2; exit 1; }
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          pattern: container-*
+          merge-multiple: true
+          path: container-images
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069
+      - uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Publish tested images and multi-platform tags
+        working-directory: container-images
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${RELEASE_TAG#v}"
+          sources=()
+          for arch in amd64 arm64; do
+            sha256sum --check "$arch.sha256"
+            docker load --input "$arch.tar.gz"
+            ref="$IMAGE:$version-$arch"
+            docker tag "timone:ci-$arch" "$ref"
+            docker push "$ref"
+            digest=$(docker buildx imagetools inspect "$ref" --format '{{json .Manifest.Digest}}' | tr -d '\"')
+            sources+=("$IMAGE@$digest")
+          done
+          docker buildx imagetools create --tag "$IMAGE:$version" "${sources[@]}"
+          docker buildx imagetools create --tag "$IMAGE:latest" "${sources[@]}"
+          docker buildx imagetools inspect "$IMAGE:$version"
+          echo "Published $IMAGE:$version and $IMAGE:latest for linux/amd64 and linux/arm64." >> "$GITHUB_STEP_SUMMARY"

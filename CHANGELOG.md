@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Native AMD64 and ARM64 container build and runtime checks in CI.
+- Docker Hub publication of tested images with version and latest multi-platform tags.
+- Container installation and release credential setup instructions.
+
 ## [1.3.0] - 2026-11-04
 
 ### Added

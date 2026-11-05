@@ -268,7 +268,7 @@ jobs:
   checks:
     name: Build and test
     if: ${{ always() }}
-    needs: [workflows, frontend, integration, packaging, security, archives, browser, desktop, live-cluster]
+    needs: [workflows, frontend, integration, packaging, security, archives, browser, desktop, live-cluster, containers]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -283,11 +283,12 @@ jobs:
           DESKTOP_REQUIRED: ${{ inputs.release || false }}
           BROWSER_RESULT: ${{ needs.browser.result }}
           SECURITY_RESULT: ${{ needs.security.result }}
+          CONTAINERS_RESULT: ${{ needs.containers.result }}
           LIVE_RESULT: ${{ needs.live-cluster.result }}
         run: |
           printf '| Check | Result |\n| --- | --- |\n' >> "$GITHUB_STEP_SUMMARY"
           failed=0
-          for check in WORKFLOWS FRONTEND INTEGRATION PACKAGING SECURITY ARCHIVES BROWSER DESKTOP LIVE; do
+          for check in WORKFLOWS FRONTEND INTEGRATION PACKAGING SECURITY ARCHIVES BROWSER DESKTOP LIVE CONTAINERS; do
             variable="${check}_RESULT"
             result="${!variable}"
             if [[ "$check" == DESKTOP && "$DESKTOP_REQUIRED" != true && "$result" == skipped ]]; then result=success; fi
@@ -462,3 +463,46 @@ jobs:
     with:
       package-only: true
       reuse-backend: true
+
+  containers:
+    name: Container (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069
+      - name: Build native container
+        env:
+          ARCH: ${{ matrix.arch }}
+        run: |
+          docker buildx build --platform "linux/$ARCH" --load --tag "timone:ci-$ARCH" .
+      - name: Verify container runtime
+        env:
+          ARCH: ${{ matrix.arch }}
+        run: bash scripts/ci/container-smoke.sh "timone:ci-$ARCH"
+      - name: Save tested release image
+        if: inputs.release
+        env:
+          ARCH: ${{ matrix.arch }}
+        run: |
+          mkdir -p container-image
+          docker save "timone:ci-$ARCH" | gzip > "container-image/$ARCH.tar.gz"
+          (cd container-image && sha256sum "$ARCH.tar.gz" > "$ARCH.sha256")
+      - name: Retain tested release image
+        if: inputs.release
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: container-${{ matrix.arch }}
+          path: container-image/
+          if-no-files-found: error
+          retention-days: 7

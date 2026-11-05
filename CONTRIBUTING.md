@@ -122,3 +122,28 @@ Use the [pull request template](.github/PULL_REQUEST_TEMPLATE/PULL_REQUEST_TEMPL
 ---
 
 Happy coding! ☸️
+
+## Docker Hub releases
+
+Create the Docker Hub repository `corvaglia91/timone` and configure GitHub Actions
+repository secrets `DOCKERHUB_USERNAME` (`corvaglia91`) and `DOCKERHUB_TOKEN`
+(a Docker Hub access token with write access to that repository).
+
+The stable `vX.Y.Z` release workflow runs all quality gates and creates the GitHub
+release, then publishes the exact AMD64 and ARM64 images tested in CI. It verifies
+artifact checksums, pushes architecture tags, and creates combined `X.Y.Z` and
+`latest` tags. Missing credentials fail the Docker job explicitly. Configure them
+and rerun failed jobs for that release. The GitHub release remains available if
+Docker publication fails. Use a new version for source changes.
+
+Pull requests and main-branch CI build and smoke-test both native architectures
+without registry credentials or publishing. Run the container check locally with
+Docker running:
+
+```sh
+docker build -t timone:check .
+bash scripts/ci/container-smoke.sh timone:check
+```
+
+This checks non-root execution, a read-only filesystem, UI, health, API
+authentication, a demo overview response, and graceful shutdown.

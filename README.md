@@ -70,6 +70,34 @@ For kubeconfigs that use a credential plugin, install the provider CLI and expli
 
 Use `--kubeconfig` for another kubeconfig path or an OS-separated path list, `--no-browser` to suppress browser launch, and `--help` for all CLI options. Explicit flags override environment variables. To invoke the application as `kubectl timone`, place a copy named `kubectl-timone` on your `PATH`.
 
+## Docker Hub
+
+Stable releases publish `corvaglia91/timone:<version>` and `:latest` for Linux
+AMD64 and ARM64 after the release workflow completes. Prefer version tags for
+repeatable deployments. Try the published image with simulated data:
+
+```sh
+export TIMONE_TOKEN="$(openssl rand -hex 32)"
+docker run --rm --name timone --read-only --cap-drop ALL \
+  --security-opt no-new-privileges:true \
+  -p 127.0.0.1:8080:8080 \
+  -e TIMONE_MODE=demo -e TIMONE_ENV=development -e TIMONE_TOKEN \
+  corvaglia91/timone:latest
+```
+
+Open <http://127.0.0.1:8080> and enter the token. Stop with Ctrl+C.
+The image runs as UID/GID `10001:10001` and defaults to `incluster` mode on
+port 8080. In Kubernetes, assign a ServiceAccount with the required read
+permissions and configure `TIMONE_TOKEN` or `TIMONE_TOKEN_FILE` through a Secret.
+See [.env.example](.env.example) for scope, authentication, and public URL settings.
+
+For a kubeconfig mounted read-only at `/config/kubeconfig`, set
+`TIMONE_MODE=local` and `KUBECONFIG=/config/kubeconfig`. Make the file and its
+referenced certificates readable by UID 10001. The image contains CA certificates
+but no cloud provider CLIs: credential plugins require a custom image containing
+those tools and explicit `--allow-exec-auth`. Optional persistent history requires
+a writable volume owned by UID 10001.
+
 ## Docker Compose demo
 
 Docker Compose builds the application and starts it with simulated data. It does not mount your kubeconfig.
