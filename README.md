@@ -2,7 +2,7 @@
   <img src="resources/timone.svg" alt="Timone logo" width="96" height="96">
 </p>
 
-# Timone ☸️
+# Timone
 
 **Your control panel for Kubernetes insights and diagnostics**
 
