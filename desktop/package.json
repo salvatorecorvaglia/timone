@@ -18,9 +18,9 @@
     "dist": "electron-builder --config builder.cjs --publish never"
   },
   "devDependencies": {
-    "@playwright/test": "1.65.0",
+    "@playwright/test": "1.65.1",
     "@resvg/resvg-js": "2.6.2",
-    "electron": "45.3.2",
+    "electron": "45.3.3",
     "electron-builder": "26.18.0"
   },
   "engines": {
