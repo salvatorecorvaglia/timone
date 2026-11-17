@@ -20,7 +20,7 @@ export interface UpdateState {
   canCheck: boolean;
   canInstall: boolean;
   reason: UpdateReason | null;
-  packageManager: 'homebrew' | 'scoop' | 'deb' | null;
+  packageManager: 'scoop' | 'deb' | null;
   command: string | null;
   checkedAt: string | null;
 }

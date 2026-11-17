@@ -57,7 +57,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Desktop auto-updates from GitHub release feeds with SHA-512 verification, including in-place updates for unsigned macOS builds and package-manager guidance for Homebrew, Scoop, and deb installs.
+- Desktop auto-updates from GitHub release feeds with SHA-512 verification, including in-place updates for unsigned macOS builds and package-manager guidance for Scoop and deb installs.
 - Application update controls in desktop Settings and an app-wide update banner, with manual checks, download progress, restart-to-install actions, and error recovery.
 - Desktop update manifests generated and validated during packaging and included in GitHub releases.
 
@@ -89,9 +89,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Exercise demo startup, HTTP health checks, and graceful shutdown in the Homebrew formula test without Kubernetes credentials.
 - Retry desktop packaging up to three times when macOS cannot detach a temporary DMG volume because the device is busy; other packaging failures still fail immediately.
-- Validate the public Homebrew desktop cask in the tap synchronization workflow by installing it and checking the application and bundled backend executables.
 - Synchronize workspace changes across API consumers, global search, and live updates, discarding stale responses and avoiding duplicate stream teardown.
 - Fall back to the summary tab and remove invalid resource-detail tab parameters from the URL.
 - Display warning and unknown health states correctly in the topology minimap and mark unresolved routing references as critical.

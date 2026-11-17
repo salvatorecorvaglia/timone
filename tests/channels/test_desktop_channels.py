@@ -13,11 +13,7 @@ class DesktopChannelsTest(unittest.TestCase):
     manifest = "\n".join(f"{digest * 64}  timone-desktop_1.0.0_{name}" for digest, name in [("a", "mac_arm64.dmg"), ("b", "mac_x64.dmg"), ("c", "win_x64.exe")])
 
     def test_pinned_assets_architectures_and_hashes(self):
-        cask, raw = channels.render("v" + self.version, self.manifest)
-        self.assertIn('arch arm: "arm64", intel: "x64"', cask)
-        self.assertIn('"' + "a" * 64 + '"', cask)
-        self.assertIn('"' + "b" * 64 + '"', cask)
-        self.assertIn('app "Timone.app"', cask)
+        raw = channels.render("v" + self.version, self.manifest)
         scoop = json.loads(raw)
         self.assertEqual(scoop["version"], self.version)
         self.assertEqual(set(scoop["architecture"]), {"64bit"})
@@ -35,14 +31,12 @@ class DesktopChannelsTest(unittest.TestCase):
                 channels.render(version, self.manifest)
 
     def test_stable_channel_and_signing(self):
-        cask, raw = channels.render(self.version, self.manifest)
-        self.assertIn('cask "timone-desktop"', cask)
+        raw = channels.render(self.version, self.manifest)
         self.assertEqual(json.loads(raw)["shortcuts"], [["timone-desktop.exe", "Timone"]])
-        self.assertEqual(channels.channel_names("v1.0.0"), ("timone-desktop.rb", "timone-desktop.json"))
+        self.assertEqual(channels.channel_names("v1.0.0"), "timone-desktop.json")
         with self.assertRaises(ValueError):
             channels.channel_names("v1.0.0-preview.1")
-        signed_cask, signed_scoop = channels.render(self.version, self.manifest, signed=True)
-        self.assertNotIn("caveats", signed_cask)
+        signed_scoop = channels.render(self.version, self.manifest, signed=True)
         self.assertNotIn("Unsigned", signed_scoop)
 
 

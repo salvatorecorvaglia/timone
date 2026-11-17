@@ -39,7 +39,6 @@ function statusTone(state: UpdateState | null, checking: boolean) {
 function deliveryLabel(state: UpdateState | null) {
   if (!state) return 'Checking…';
   if (state.reason === 'development') return 'Unavailable in development';
-  if (state.packageManager === 'homebrew') return 'Homebrew (manual)';
   if (state.packageManager === 'scoop') return 'Scoop (manual)';
   if (state.packageManager === 'deb') return 'System package (manual)';
   if (state.mode === 'self') return 'In-place macOS update';

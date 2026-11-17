@@ -65,26 +65,6 @@ it('offers a download when this build can install updates', async () => {
   await waitFor(() => expect(update.install).toHaveBeenCalledOnce());
 });
 
-it('sends Homebrew installs to the package manager instead of overwriting them', async () => {
-  const state: UpdateState = {
-    ...available,
-    mode: 'manual',
-    canInstall: false,
-    reason: 'package-manager',
-    packageManager: 'homebrew',
-    command: 'brew upgrade --cask timone-desktop',
-  };
-  const update = installBridge(state);
-  vi.resetModules();
-  await showPanel();
-
-  expect(await screen.findByText('Homebrew (manual)')).toBeInTheDocument();
-  expect(screen.getByText('brew upgrade --cask timone-desktop')).toBeInTheDocument();
-  expect(screen.queryByRole('button', { name: 'Download update' })).not.toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button', { name: 'Open GitHub release' }));
-  await waitFor(() => expect(update.openReleasePage).toHaveBeenCalledOnce());
-});
-
 it('follows download progress and offers a restart when ready', async () => {
   const update = installBridge(available);
   vi.resetModules();

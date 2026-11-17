@@ -50,8 +50,6 @@ jobs:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           persist-credentials: false
-      - name: Test Homebrew formula generation and publication
-        run: python3 -m unittest discover -s tests/homebrew -v
       - name: Test native backend promotion
         run: python3 -m unittest discover -s tests/release-build -v
       - name: Test desktop manifest generation
@@ -343,13 +341,6 @@ jobs:
           for archive in release/*.tar.gz; do tar -tzf "$archive"; done
           for archive in release/*.zip; do unzip -t "$archive"; done
 
-      - name: Generate stable Homebrew formula
-        if: ${{ startsWith(github.ref, 'refs/tags/v') && !contains(github.ref_name, '-') && !contains(github.ref_name, '+') }}
-        run: |
-          python3 scripts/homebrew.py --version "$RELEASE_TAG" \
-            --checksums release/checksums.txt --output release/timone.rb
-          (cd release && sha256sum timone.rb >> checksums.txt)
-
       - name: Upload release archives
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
@@ -359,7 +350,6 @@ jobs:
             release/*.tar.gz
             release/*.zip
             release/checksums.txt
-            release/timone.rb
           if-no-files-found: error
           retention-days: 7
 

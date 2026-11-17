@@ -19,18 +19,18 @@ class ChannelSyncTest(unittest.TestCase):
         return f'{hashlib.sha256(content or self.content).hexdigest()}  {self.filename}\n'
 
     def test_verified_version_and_integrity(self):
-        self.assertEqual(sync.verify("v1.0.0", self.filename, self.manifest(), self.content, "scoop"), self.content.decode())
+        self.assertEqual(sync.verify("v1.0.0", self.filename, self.manifest(), self.content), self.content.decode())
         for manifest, content in [(self.manifest(), self.content + b' '), (self.manifest() * 2, self.content), ("invalid", self.content), (self.manifest(b'{"version":"0.9.0"}'), b'{"version":"0.9.0"}')]:
             with self.subTest(manifest=manifest), self.assertRaises(ValueError):
-                sync.verify("v1.0.0", self.filename, manifest, content, "scoop")
+                sync.verify("v1.0.0", self.filename, manifest, content)
         with self.assertRaises(ValueError):
-            sync.verify("v1.0.0", "../evil.json", self.manifest(), self.content, "scoop")
+            sync.verify("v1.0.0", "../evil.json", self.manifest(), self.content)
 
     def test_selection_ignores_drafts_missing_assets_and_channel_mismatches(self):
         def release(tag, prerelease=False, draft=False, asset="timone-desktop.json"):
             return {"tag_name": tag, "prerelease": prerelease, "draft": draft, "assets": [{"name": asset}, {"name": "checksums.txt"}]}
         releases = [release("v0.9.0"), release("v1.0.0"), release("v1.0.0", draft=True), release("v1.0.0", prerelease=True), release("v1.0.0", asset="wrong"), release("v1.0.0-preview.1", True)]
-        self.assertEqual([r["tag_name"] for r in sync.select_releases(releases, "scoop")], ["v1.0.0"])
+        self.assertEqual([r["tag_name"] for r in sync.select_releases(releases)], ["v1.0.0"])
 
     def test_no_downgrades_or_unnecessary_writes(self):
         for previous in ['{"version":"1.0.1"}', self.content.decode()]:

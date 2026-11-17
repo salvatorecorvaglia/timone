@@ -15,7 +15,7 @@ function backendEnvironment(settings, inherited = process.env) {
   env.TIMONE_ALLOW_EXEC_AUTH = String(settings.allowExecAuth === true);
   if (settings.kubeconfig) env.KUBECONFIG = settings.kubeconfig;
   if (process.platform === 'darwin') {
-    env.PATH = [...new Set([env.PATH || '/usr/bin:/bin', '/opt/homebrew/bin', '/usr/local/bin', path.join(env.HOME || '', '.local/bin')])].join(path.delimiter);
+    env.PATH = [...new Set([env.PATH || '/usr/bin:/bin', '/usr/local/bin', path.join(env.HOME || '', '.local/bin')])].join(path.delimiter);
   }
   return env;
 }

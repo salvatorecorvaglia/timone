@@ -69,36 +69,6 @@ test('builds a release asset URL that cannot escape the release path', () => {
   assert.ok(releaseAssetUrl('1.2.0', '../evil').includes('..%2Fevil'));
 });
 
-test('detects Homebrew installs only for bundles in an Applications folder', () => {
-  const caskroom = '/opt/homebrew/Caskroom';
-  const base = {
-    platform: 'darwin',
-    home: '/Users/example',
-    exists: (file) => file === `${caskroom}/timone-desktop`,
-  };
-  assert.deepEqual(
-    detectPackageManager({
-      ...base,
-      bundlePath: '/Applications/Timone.app',
-    }),
-    { kind: 'homebrew', command: 'brew upgrade --cask timone-desktop' },
-  );
-  assert.equal(
-    detectPackageManager({
-      ...base,
-      bundlePath: '/Users/example/Downloads/Timone.app',
-    }),
-    null,
-  );
-  assert.deepEqual(
-    detectPackageManager({
-      ...base,
-      bundlePath: '/opt/homebrew/Caskroom/timone-desktop/1.1.0/Timone.app',
-    }),
-    { kind: 'homebrew', command: 'brew upgrade --cask timone-desktop' },
-  );
-});
-
 test('detects Scoop installs from the executable path', () => {
   assert.deepEqual(
     detectPackageManager({
@@ -133,19 +103,6 @@ test('resolves the install route for every platform and package manager', () => 
     mode: 'manual',
     reason: 'development',
   });
-  assert.deepEqual(
-    decideUpdateMode({
-      ...base,
-      platform: 'darwin',
-      packageManager: { kind: 'homebrew', command: 'brew upgrade --cask timone-desktop' },
-    }),
-    {
-      mode: 'manual',
-      reason: 'package-manager',
-      packageManager: 'homebrew',
-      command: 'brew upgrade --cask timone-desktop',
-    },
-  );
   assert.deepEqual(
     decideUpdateMode({
       ...base,

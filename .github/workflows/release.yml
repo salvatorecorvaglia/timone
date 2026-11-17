@@ -141,7 +141,7 @@ jobs:
         shell: bash
         run: |
           python3 scripts/desktop_channels.py --version "$RELEASE_TAG" --checksums release/checksums.txt --output release
-          (cd release && sha256sum timone-desktop*.rb timone-desktop*.json >> checksums.txt && sha256sum --check checksums.txt)
+          (cd release && sha256sum timone-desktop*.json >> checksums.txt && sha256sum --check checksums.txt)
 
       - name: Create release
         env:
@@ -154,43 +154,6 @@ jobs:
           gh release create "$RELEASE_TAG" release/* \
             --draft --verify-tag --title "Timone $RELEASE_TAG" --notes-file "$RUNNER_TEMP/release-notes.md"
           gh release edit "$RELEASE_TAG" --draft=false
-
-  homebrew:
-    name: Update stable Homebrew tap
-    needs: publish
-    if: ${{ !contains(github.ref_name, '-') && !contains(github.ref_name, '+') }}
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    concurrency:
-      group: homebrew-tap
-      cancel-in-progress: false
-    steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
-        with:
-          persist-credentials: false
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
-        with:
-          name: release-assets
-          path: release
-      - name: Verify release assets
-        working-directory: release
-        run: sha256sum --check checksums.txt
-      - name: Publish formula when tap credentials are configured
-        env:
-          GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
-          TAP_PULL_SYNC: ${{ vars.HOMEBREW_TAP_PULL_SYNC }}
-        run: |
-          if [ -z "$GH_TOKEN" ]; then
-            if [ "$TAP_PULL_SYNC" = true ]; then
-              echo 'The Homebrew tap syncs stable releases on its own hourly schedule.' >> "$GITHUB_STEP_SUMMARY"
-              exit 0
-            fi
-            echo '::warning::Homebrew tap publication is not configured.'
-            echo 'Homebrew formula is attached to the release. Automatic tap updates require HOMEBREW_TAP_TOKEN and salvatorecorvaglia/homebrew-tap.' >> "$GITHUB_STEP_SUMMARY"
-            exit 0
-          fi
-          python3 scripts/publish_homebrew.py --formula release/timone.rb
-
   docker:
     name: Publish tested Docker Hub images
     needs: [quality, publish]

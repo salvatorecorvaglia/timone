@@ -25,7 +25,7 @@ function description(state: UpdateState) {
   if (state.status === 'ready') return 'Restart Timone to finish installing it.';
   if (state.mode === 'manual') {
     if (state.reason === 'package-manager') {
-      return `This copy is managed by ${state.packageManager === 'homebrew' ? 'Homebrew' : 'Scoop'}. Update it outside Timone.`;
+      return `This copy is managed by ${state.packageManager === 'scoop' ? 'Scoop' : 'a package manager'}. Update it outside Timone.`;
     }
     if (state.reason === 'system-package') {
       return 'This copy is managed by your system package manager. Update it there.';
