@@ -13,12 +13,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Docker Hub publication of tested images with version and latest multi-platform tags.
 - Container installation and release credential setup instructions.
 
-
 ### Changed
 
+- Update React Flow to `13.0.1` and axe-core to `4.14.1`; refresh the desktop minimatch compatibility lockfile and dependency overrides.
 - Refresh indirect Go dependencies, including Kubernetes OpenAPI support and `golang.org/x` modules.
 - Update Electron to `45.3.3` and align desktop and web Playwright dependencies at `1.65.1`.
-- Refresh frontend dependencies and tooling, including TanStack Query `5.107.1`, Lucide `1.73.0`, Vite `8.3.8`, jsdom `31.0.1`, and Biome `2.6.8`, along with desktop compatibility dependencies and lockfiles.
+- Refresh frontend dependencies and tooling, including TanStack Query `5.107.2`, Lucide `1.74.0`, Vite `8.3.8`, jsdom `31.0.1`, and Biome `2.6.8`, along with desktop compatibility dependencies and lockfiles.
 
 ## [1.3.0] - 2026-11-04
 
