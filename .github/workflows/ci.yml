@@ -96,7 +96,7 @@ jobs:
 
       - name: Upload frontend coverage
         if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: frontend-coverage
           path: web/coverage/
@@ -106,7 +106,7 @@ jobs:
       - name: Build and verify repeatable frontend assets
         run: node tests/release/frontend.mjs
       - name: Share verified embedded frontend
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: embedded-frontend
           path: web/dist/
@@ -117,7 +117,7 @@ jobs:
       - name: Build browser test application
         run: CGO_ENABLED=0 go build -trimpath -o bin/timone ./cmd/timone
       - name: Share browser test application
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: browser-application
           path: bin/timone
@@ -191,7 +191,7 @@ jobs:
 
       - name: Retain Go coverage
         if: ${{ always() }}
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: go-coverage
           path: coverage.out
@@ -221,7 +221,7 @@ jobs:
           TIMONE_ACCEPTANCE_ARTIFACTS: ${{ runner.temp }}/timone-live-artifacts
         run: sh tests/cluster/run.sh
       - name: Retain real restricted overview fixtures
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: live-cluster-fixtures
           path: ${{ runner.temp }}/timone-live-artifacts/
@@ -347,7 +347,7 @@ jobs:
           for archive in release/*.zip; do unzip -t "$archive"; done
 
       - name: Upload release archives
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: release-assets
           compression-level: 0
@@ -358,7 +358,7 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: inputs.release
         with:
           name: desktop-backend-linux-amd64
@@ -366,7 +366,7 @@ jobs:
           if-no-files-found: error
           compression-level: 0
           retention-days: 7
-      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: inputs.release
         with:
           name: desktop-backend-linux-arm64
@@ -374,7 +374,7 @@ jobs:
           if-no-files-found: error
           compression-level: 0
           retention-days: 7
-      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: inputs.release
         with:
           name: desktop-backend-darwin-amd64
@@ -382,7 +382,7 @@ jobs:
           if-no-files-found: error
           compression-level: 0
           retention-days: 7
-      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: inputs.release
         with:
           name: desktop-backend-darwin-arm64
@@ -390,7 +390,7 @@ jobs:
           if-no-files-found: error
           compression-level: 0
           retention-days: 7
-      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: inputs.release
         with:
           name: desktop-backend-windows-amd64
@@ -441,7 +441,7 @@ jobs:
           TIMONE_LIVE_OVERVIEW: live-cluster/1.37.0/live-overview.json
       - name: Retain browser reports
         if: ${{ always() }}
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: browser-reports
           path: |
@@ -495,7 +495,7 @@ jobs:
           (cd container-image && sha256sum "$ARCH.tar.gz" > "$ARCH.sha256")
       - name: Retain tested release image
         if: inputs.release
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           compression-level: 0
           name: container-${{ matrix.arch }}
