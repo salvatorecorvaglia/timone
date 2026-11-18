@@ -21,7 +21,7 @@ COPY web/embed.go web/package.json web/
 COPY --from=frontend /src/web/dist web/dist
 RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -trimpath -ldflags="-s -w" -o /timone ./cmd/timone
 
-FROM alpine:3.23
+FROM alpine:3.24
 LABEL org.opencontainers.image.source="https://github.com/salvatorecorvaglia/timone" \
       org.opencontainers.image.description="Read-only Kubernetes insights and diagnostics" \
       org.opencontainers.image.licenses="MIT"
