@@ -1,5 +1,5 @@
 # Reproducible scanner environment; never part of the production image.
-FROM node:24-alpine AS node
+FROM node:26-alpine AS node
 RUN corepack enable && corepack prepare pnpm@12.16.1 --activate
 FROM golang:1.26.10-alpine
 RUN apk add --no-cache libstdc++
