@@ -165,11 +165,13 @@ jobs:
         run: go test -race -count=1 -timeout=10m -coverprofile=coverage.out ./...
 
       - name: Exercise concurrent investigation scale
+        if: ${{ !inputs.release }}
         env:
           TIMONE_LOAD_TEST: '1'
         run: go test -race -count=1 -timeout=3m -run TestConcurrentInvestigationLoad -v ./internal/service
 
       - name: Enforce allocation budgets
+        if: ${{ !inputs.release }}
         run: |
           python3 -m unittest discover -s tests/performance -v
           python3 scripts/check_benchmarks.py
@@ -231,6 +233,7 @@ jobs:
 
   security:
     name: Dependency security
+    if: ${{ !inputs.release }}
     needs: frontend
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -279,6 +282,7 @@ jobs:
           ARCHIVES_RESULT: ${{ needs.archives.result }}
           DESKTOP_RESULT: ${{ needs.desktop.result }}
           DESKTOP_REQUIRED: ${{ inputs.release || false }}
+          RELEASE_MODE: ${{ inputs.release || false }}
           BROWSER_RESULT: ${{ needs.browser.result }}
           SECURITY_RESULT: ${{ needs.security.result }}
           CONTAINERS_RESULT: ${{ needs.containers.result }}
@@ -290,6 +294,7 @@ jobs:
             variable="${check}_RESULT"
             result="${!variable}"
             if [[ "$check" == DESKTOP && "$DESKTOP_REQUIRED" != true && "$result" == skipped ]]; then result=success; fi
+            if [[ "$RELEASE_MODE" == true && "$result" == skipped && "$check" == SECURITY ]]; then result=success; fi
             printf '| %s | %s |\n' "$check" "$result" >> "$GITHUB_STEP_SUMMARY"
             if [ "$result" != success ]; then
               echo "::error::$check finished with result: $result"

@@ -112,7 +112,7 @@ jobs:
         env:
           RELEASE_TAG: ${{ github.ref_name }}
         run: |
-          python3 -m pip install --quiet --disable-pip-version-check --target "$RUNNER_TEMP/desktop-update-pyyaml" pyyaml
+          python3 -m pip install --quiet --disable-pip-version-check --target "$RUNNER_TEMP/desktop-update-pyyaml" pyyaml==6.0.3
           PYTHONPATH="$RUNNER_TEMP/desktop-update-pyyaml" python3 scripts/desktop_update_manifests.py --directory desktop-release --version "$RELEASE_TAG"
           cp desktop-release/latest*.yml release/
 
