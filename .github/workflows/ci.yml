@@ -497,6 +497,7 @@ jobs:
         if: inputs.release
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
+          compression-level: 0
           name: container-${{ matrix.arch }}
           path: container-image/
           if-no-files-found: error
