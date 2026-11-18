@@ -211,7 +211,7 @@ jobs:
           if command -v kind >/dev/null; then kind delete cluster --name timone-desktop-acceptance; fi
 
       - name: Upload installers
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: desktop-installers-${{ runner.os }}-${{ matrix.arch }}
           compression-level: 0
@@ -227,7 +227,7 @@ jobs:
 
       - name: Upload desktop test screenshot
         if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: desktop-report-${{ runner.os }}-${{ matrix.arch }}
           path: desktop/test-results/
