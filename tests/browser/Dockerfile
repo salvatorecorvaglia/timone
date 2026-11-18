@@ -1,6 +1,6 @@
 # Browser acceptance only; Chromium runs in an isolated test container.
 FROM timone:ci AS app
-FROM node:24-alpine
+FROM node:26-alpine
 RUN apk add --no-cache chromium
 WORKDIR /work/web
 COPY web/package.json web/pnpm-lock.yaml web/pnpm-workspace.yaml ./
