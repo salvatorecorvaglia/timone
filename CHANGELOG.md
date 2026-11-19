@@ -19,6 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Refresh indirect Go dependencies, including Kubernetes OpenAPI support, `golang.org/x/net` `0.63.0`, and `golang.org/x` modules.
 - Update Electron to `45.3.4` and align desktop and web Playwright dependencies at `1.65.1`.
 - Refresh frontend dependencies and tooling, including TanStack Query `5.108.0`, Lucide `1.75.0`, Recharts `3.11.0`, Vite `8.3.8`, jsdom `31.0.1`, Biome `2.6.8`, and Vitest with V8 coverage `5.1.1`, along with desktop compatibility dependencies and lockfiles.
+- Update React Router to `7.18.6` and refresh the web lockfile.
+- Update container builds and browser/security test images to Node.js `26`, the runtime base to Alpine `3.24`, and the security test Go toolchain to `1.27.3`.
+- Add weekly Dependabot checks for GitHub Actions, Go, web and desktop dependencies, and container images; refresh pinned CI actions.
+- Skip dependency security, concurrent investigation load, and allocation budget checks in release mode; retain these checks in regular CI. Pin release manifest tooling to PyYAML `6.0.3`.
 
 ## [1.3.0] - 2026-11-04
 
