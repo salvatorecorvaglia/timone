@@ -1,7 +1,7 @@
 FROM --platform=$BUILDPLATFORM node:26-alpine AS frontend
 WORKDIR /src/web
 COPY web/package.json web/pnpm-lock.yaml web/pnpm-workspace.yaml ./
-RUN npm install --global pnpm@12.16.1
+RUN npm install --global pnpm@12.23.0
 RUN pnpm install --frozen-lockfile --ignore-scripts
 COPY web/ ./
 COPY resources/ /src/resources/

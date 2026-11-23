@@ -4,7 +4,7 @@ FROM node:26-alpine
 RUN apk add --no-cache chromium
 WORKDIR /work/web
 COPY web/package.json web/pnpm-lock.yaml web/pnpm-workspace.yaml ./
-RUN npm install --global pnpm@12.16.1
+RUN npm install --global pnpm@12.23.0
 RUN pnpm install --frozen-lockfile --ignore-scripts
 COPY --from=app /usr/local/bin/timone /work/bin/timone
 COPY tests/browser /work/tests/browser

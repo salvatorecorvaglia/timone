@@ -1,6 +1,6 @@
 # Reproducible scanner environment; never part of the production image.
 FROM node:26-alpine AS node
-RUN npm install --global pnpm@12.16.1
+RUN npm install --global pnpm@12.23.0
 FROM golang:1.27.4-alpine
 RUN apk add --no-cache libstdc++
 COPY --from=node /usr/local/bin/node /usr/local/bin/node
