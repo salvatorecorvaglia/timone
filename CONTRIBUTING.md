@@ -4,8 +4,6 @@ Thanks for helping improve Timone. Bug reports, feature ideas, documentation fix
 
 ## Development setup
 
-Install Go 1.27.3 or newer, Node.js 24 or newer, and pnpm 12.16.1, as pinned in `web/package.json` and `desktop/package.json`. The commands below use a POSIX shell and run from the repository root unless stated otherwise.
-
 ```sh
 go mod download
 pnpm --dir web install --frozen-lockfile

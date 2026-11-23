@@ -403,12 +403,6 @@ jobs:
     name: Browser and accessibility tests
     needs: [frontend, live-cluster]
     runs-on: ubuntu-24.04
-    container:
-      image: mcr.microsoft.com/playwright:v1.64.1-noble
-      options: --ipc=host
-    defaults:
-      run:
-        shell: bash
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -423,8 +417,8 @@ jobs:
           cache: pnpm
           cache-dependency-path: web/pnpm-lock.yaml
       - run: pnpm --dir web install --frozen-lockfile
-      - name: Check Playwright matches the browser image
-        run: test "$(node -p 'require("./web/node_modules/@playwright/test/package.json").version')" = "1.64.1"
+      - name: Install Chromium and system dependencies
+        run: pnpm --dir web exec playwright install --with-deps chromium
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
           name: browser-application
