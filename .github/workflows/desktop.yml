@@ -113,10 +113,11 @@ jobs:
 
       - name: Install Linux desktop test dependencies
         if: runner.os == 'Linux'
+        timeout-minutes: 5
         run: |
           for source in /etc/apt/sources.list /etc/apt/sources.list.d/ubuntu.sources /etc/apt/apt-mirrors.txt; do
             if [[ -f "$source" ]]; then
-              sudo sed -i 's|http://azure.archive.ubuntu.com|https://archive.ubuntu.com|g; s|https://azure.archive.ubuntu.com|https://archive.ubuntu.com|g' "$source"
+              sudo sed -Ei 's!https?://(azure\.|[[:alnum:]-]+\.ec2\.)archive\.ubuntu\.com/!https://archive.ubuntu.com/!g' "$source"
             fi
           done
           options=(-o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30)
